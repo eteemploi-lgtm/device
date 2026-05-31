@@ -1,0 +1,5 @@
+D:/Acoustimeter_Qt6/Acoustimeter/build/Desktop_Qt_6_11_1_MinGW_64_bit-Debug/CMakeFiles/Acoustimeter.dir
+D:/Acoustimeter_Qt6/Acoustimeter/build/Desktop_Qt_6_11_1_MinGW_64_bit-Debug/CMakeFiles/edit_cache.dir
+D:/Acoustimeter_Qt6/Acoustimeter/build/Desktop_Qt_6_11_1_MinGW_64_bit-Debug/CMakeFiles/rebuild_cache.dir
+D:/Acoustimeter_Qt6/Acoustimeter/build/Desktop_Qt_6_11_1_MinGW_64_bit-Debug/CMakeFiles/Acoustimeter_autogen_timestamp_deps.dir
+D:/Acoustimeter_Qt6/Acoustimeter/build/Desktop_Qt_6_11_1_MinGW_64_bit-Debug/CMakeFiles/Acoustimeter_autogen.dir

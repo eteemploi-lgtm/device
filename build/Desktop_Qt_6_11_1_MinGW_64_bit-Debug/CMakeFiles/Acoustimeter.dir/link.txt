@@ -1,0 +1,3 @@
+D:\Qt2\Tools\CMake_64\bin\cmake.exe -E rm -f CMakeFiles\Acoustimeter.dir/objects.a
+D:\Qt2\Tools\mingw1310_64\bin\ar.exe qc CMakeFiles\Acoustimeter.dir/objects.a @CMakeFiles\Acoustimeter.dir\objects1.rsp
+D:\Qt2\Tools\mingw1310_64\bin\g++.exe -g -mwindows -Wl,--whole-archive CMakeFiles\Acoustimeter.dir/objects.a -Wl,--no-whole-archive -o Acoustimeter.exe -Wl,--out-implib,libAcoustimeter.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\Acoustimeter.dir\linkLibs.rsp
