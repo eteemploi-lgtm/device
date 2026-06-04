@@ -1,221 +1,400 @@
-#include "MainWindow.h"
-#include "ui_MainWindow.h"
-#include "GraphWidget.h"
-#include "ConfigWindow.h"
-#include "StyleManager.h"
-#include <QMenuBar>
-#include <QMenu>
-#include <QAction>
-#include <QStatusBar>
-#include <QLabel>
-#include <QPushButton>
-#include <QFrame>
-#include <QScrollArea>
+#include "AmplifierWidget.h"
+#include <QWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QLabel>
+#include <QSpinBox>
+#include <QDoubleSpinBox>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QPainter>
+#include <QPainterPath>
+#include <QFileDialog>
 #include <QTimer>
-#include <QTextEdit>
-#include <QToolBar>
-#include <QDialog>
-#include <QDateTime>
-#include <QRandomGenerator>
-#include <QApplication>
-#include <QDebug>
 #include <QtMath>
 
-const QList<QPair<QString,QString>> MainWindow::LOG_MESSAGES = {
-    {"ok",   "Système initialisé — 4 hydrophones, 2 amplificateurs"},
-    {"ok",   "AMP1 actif — MLI 38.4 kHz générée"},
-    {"warn", "Hydro 3 : niveau de bruit élevé (+6 dB)"},
-    {"ok",   "Acquisition démarrée — Fs 96 kHz"},
-    {"err",  "Hydro 4 : perte de signal — vérifier connectique"},
-    {"warn", "T2 : température 47.8°C (seuil 50°C)"},
-    {"ok",   "Config. sauvegardée → config_2024.json"},
-    {"ok",   "Sv démarrée — gîte 0°→360°, résolution 1°"},
-    {"warn", "I_AMP1 : courant élevé 3.8A (max 5A)"},
-};
-
-MainWindow::MainWindow(const ConnectionConfig& cfg, QWidget* parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow), m_connConfig(cfg)
-{
-    ui->setupUi(this);
-    for (auto& k : {"h1","h2","h3","h4","a1","a2"}) m_voies[k] = true;
-    setStyleSheet(StyleManager::instance().mainStyleSheet());
-    setupMenuBar();
-    setupVoieBar();
-    setupCharts();
-    setupSidebar();
-    setupLogView();
-    setupStatusBar();
-    m_metricTimer = new QTimer(this);
-    connect(m_metricTimer, &QTimer::timeout, this, &MainWindow::updateMetrics);
-    m_metricTimer->start(400);
-    m_logTimer = new QTimer(this);
-    connect(m_logTimer, &QTimer::timeout, this, [this](){
-        auto& msg = LOG_MESSAGES[m_logMsgIdx % LOG_MESSAGES.size()];
-        appendLog(msg.first, msg.second); m_logMsgIdx++;
-    });
-    m_logTimer->start(3500);
-    appendLog("ok", "Connexion établie — " + cfg.chassis + " · NI PXIe-8301");
-}
-
-MainWindow::~MainWindow() {
-    if (m_configWindow) { m_configWindow->close(); m_configWindow = nullptr; }
-    delete ui;
-}
-
-void MainWindow::showAbout()
-{
-    QDialog* dlg = new QDialog(this);
-    dlg->setWindowTitle("À propos — ACOUSTIMETER");
-    dlg->setFixedSize(380, 240);
-    dlg->setStyleSheet(StyleManager::instance().appStyleSheet());
-    auto* l = new QVBoxLayout(dlg);
-    l->setSpacing(10); l->setContentsMargins(24,20,24,20);
-    auto* logo = new QLabel("ACOUSTIMETER");
-    logo->setObjectName("logoLabel"); logo->setAlignment(Qt::AlignCenter);
-    l->addWidget(logo);
-    auto* sub = new QLabel("Logiciel de pilotage et mesure acoustique");
-    sub->setAlignment(Qt::AlignCenter); sub->setObjectName("subLabel");
-    l->addWidget(sub);
-    auto addRow = [&](const QString& lbl, const QString& val){
-        auto* hl = new QHBoxLayout();
-        auto* lb = new QLabel(lbl); lb->setStyleSheet("color:#8b949e;font-size:13px;");
-        auto* vl = new QLabel(val); vl->setStyleSheet("color:#00d4ff;font-size:13px;font-weight:bold;");
-        vl->setAlignment(Qt::AlignRight);
-        hl->addWidget(lb); hl->addWidget(vl); l->addLayout(hl);
-    };
-    addRow("Version",   "1.0");
-    addRow("Matériel",  "NI PXIe-8301");
-    addRow("Interface", m_connConfig.interface_);
-    addRow("Châssis",   m_connConfig.chassis);
-    addRow("Qt",        QT_VERSION_STR);
-    auto* ok = new QPushButton("Fermer");
-    ok->setProperty("cssClass","primary");
-    connect(ok, &QPushButton::clicked, dlg, &QDialog::accept);
-    l->addWidget(ok);
-    dlg->exec();
-}
-
-void MainWindow::setupMenuBar()
-{
-    auto* mFile = menuBar()->addMenu("Fichier");
-    mFile->addAction("Nouvelle session");
-    mFile->addAction("Ouvrir session...");
-    mFile->addSeparator();
-    mFile->addAction("Sauvegarder");
-    mFile->addAction("Exporter données...");
-    mFile->addSeparator();
-    connect(mFile->addAction("Quitter"), &QAction::triggered, qApp, &QApplication::quit);
-
-    auto* mAcq = menuBar()->addMenu("Acquisition");
-    mAcq->addAction("Démarrer acquisition");
-    mAcq->addAction("Arrêter acquisition");
-    mAcq->addSeparator();
-    mAcq->addAction("Démarrer mesure Sv");
-
-    auto* mTools = menuBar()->addMenu("Outils");
-    mTools->addAction("Calibration");
-    mTools->addAction("Diagnostic matériel");
-    connect(mTools->addAction("Configuration..."), &QAction::triggered,
-            this, &MainWindow::openConfig);
-
-    auto* mHelp = menuBar()->addMenu("Aide");
-    connect(mHelp->addAction("◐  Thème clair / sombre"), &QAction::triggered,
-            this, &MainWindow::toggleTheme);
-    mHelp->addSeparator();
-    mHelp->addAction("Documentation");
-    connect(mHelp->addAction("À propos..."), &QAction::triggered,
-            this, &MainWindow::showAbout);
-
-    auto* tb = addToolBar("main");
-    tb->setMovable(false);
-    auto* logoLbl = new QLabel("  ACOUSTIMETER  ");
-    logoLbl->setStyleSheet("color:#00d4ff;font-size:16px;font-weight:bold;letter-spacing:2px;");
-    tb->addWidget(logoLbl);
-    tb->addSeparator();
-
-    m_ledLabel = new QLabel("●");
-    m_ledLabel->setStyleSheet("color:#444c56;font-size:16px;");
-    m_ledLabel->setFixedWidth(22);
-    tb->addWidget(m_ledLabel);
-
-    m_acqButton = new QPushButton("▶  DÉMARRER ÉMISSION");
-    m_acqButton->setProperty("cssClass","connect");
-    m_acqButton->setFixedHeight(30);
-    m_acqButton->setMinimumWidth(190);
-    connect(m_acqButton, &QPushButton::clicked, this, &MainWindow::toggleAcquisition);
-    tb->addWidget(m_acqButton);
-    tb->addSeparator();
-
-    auto* spacer = new QWidget();
-    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    tb->addWidget(spacer);
-
-    auto* themeBtn = new QPushButton("◐");
-    themeBtn->setObjectName("themeBtn"); themeBtn->setFixedWidth(34);
-    connect(themeBtn, &QPushButton::clicked, this, &MainWindow::toggleTheme);
-    tb->addWidget(themeBtn);
-    tb->addSeparator();
-
-    QString profStr = (m_connConfig.profile == UserProfile::Administrator)
-                      ? "🔑 Admin" : "👤 Opérateur";
-    auto* userLabel = new QLabel(
-        QString("  %1  ·  <span style='color:#00d4ff'>%2</span>  ")
-        .arg(profStr, m_connConfig.chassis));
-    userLabel->setTextFormat(Qt::RichText);
-    userLabel->setStyleSheet("color:#8b949e;font-size:13px;");
-    tb->addWidget(userLabel);
-
-    auto* cfgBtn = new QPushButton("⚙  CONFIG");
-    cfgBtn->setProperty("cssClass","primary");
-    cfgBtn->setFixedHeight(30); cfgBtn->setMinimumWidth(100);
-    connect(cfgBtn, &QPushButton::clicked, this, &MainWindow::openConfig);
-    tb->addWidget(cfgBtn);
-    tb->addSeparator();
-
-    m_ledTimer = new QTimer(this);
-    connect(m_ledTimer, &QTimer::timeout, this, &MainWindow::blinkLed);
-}
-
-void MainWindow::toggleAcquisition()
-{
-    m_acquiring = !m_acquiring;
-    if (m_acquiring) {
-        m_acqButton->setText("■  ARRÊTER ÉMISSION");
-        m_acqButton->setStyleSheet(
-            "background:#1a0000;border:1px solid #ff4444;color:#ff4444;"
-            "font-size:14px;font-weight:bold;min-height:30px;border-radius:2px;");
-        m_ledTimer->start(500);
-        appendLog("ok","Émission acoustique démarrée — MLI 38.4 kHz");
-    } else {
-        m_acqButton->setText("▶  DÉMARRER ÉMISSION");
-        m_acqButton->setStyleSheet("");
-        m_acqButton->setProperty("cssClass","connect");
-        m_acqButton->style()->unpolish(m_acqButton);
-        m_acqButton->style()->polish(m_acqButton);
-        m_ledTimer->stop();
-        m_ledLabel->setStyleSheet("color:#444c56;font-size:16px;");
-        appendLog("warn","Émission acoustique arrêtée");
+// ─── Canvas MLI dynamique ────────────────────────────────────────────────────
+class MLICanvas : public QWidget {
+    Q_OBJECT
+public:
+    explicit MLICanvas(QWidget* p) : QWidget(p) {
+        setMinimumHeight(56); setMaximumHeight(56);
+        m_timer = new QTimer(this);
+        connect(m_timer, &QTimer::timeout, this, QOverload<>::of(&QWidget::update));
     }
+    void setParams(const QString& type, double freq, double amp, double offset) {
+        m_type=type; m_freq=freq; m_amp=amp; m_offset=offset;
+        update();
+    }
+    void setAnimating(bool on) {
+        if(on) m_timer->start(33);
+        else   m_timer->stop();
+    }
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.fillRect(rect(), QColor("#1f2937"));
+        int W=width(), H=height();
+        // Porteuse
+        p.setPen(QPen(QColor("#444c56"),0.8,Qt::DashLine));
+        QPainterPath carrier;
+        for(int x=0;x<W;x++){
+            double ph=(double(x)/W)*m_freq/5000.0*2*M_PI + m_phase;
+            double cv;
+            if(m_type=="Triangle") cv=2.0/M_PI*qAsin(qSin(ph));
+            else cv=(ph/M_PI - qFloor(ph/M_PI+0.5))*2.0; // Dent de scie
+            cv=cv*m_amp+m_offset;
+            double y=H/2.0-cv*H*0.35;
+            x==0?carrier.moveTo(x,y):carrier.lineTo(x,y);
+        }
+        p.drawPath(carrier);
+        // Signal modulé (sinusoïde lente)
+        p.setPen(QPen(QColor("#00d4ff"),0.8,Qt::DotLine));
+        QPainterPath sig;
+        for(int x=0;x<W;x++){
+            double sv=qSin(double(x)/W*2*M_PI*1.5)*0.8;
+            double y=H/2.0-sv*H*0.35;
+            x==0?sig.moveTo(x,y):sig.lineTo(x,y);
+        }
+        p.drawPath(sig);
+        // MLI résultant
+        p.setPen(QPen(QColor("#00e676"),1.4));
+        QPainterPath mli;
+        for(int x=0;x<W;x++){
+            double ph=(double(x)/W)*m_freq/5000.0*2*M_PI+m_phase;
+            double cv;
+            if(m_type=="Triangle") cv=2.0/M_PI*qAsin(qSin(ph));
+            else cv=(ph/M_PI-qFloor(ph/M_PI+0.5))*2.0;
+            cv=cv*m_amp+m_offset;
+            double sv=qSin(double(x)/W*2*M_PI*1.5)*0.8;
+            double ml=(sv>cv)?1.0:-1.0;
+            double y=H/2.0-ml*H*0.38;
+            x==0?mli.moveTo(x,y):mli.lineTo(x,y);
+        }
+        p.drawPath(mli);
+        // Légende
+        p.setFont(QFont("Courier New",7));
+        p.setPen(QColor("#444c56")); p.drawText(3,10,"porteuse");
+        p.setPen(QColor("#00d4ff")); p.drawText(60,10,"signal");
+        p.setPen(QColor("#00e676")); p.drawText(110,10,"MLI");
+        m_phase += 0.04;
+    }
+private:
+    QTimer* m_timer = nullptr;
+    QString m_type   = "Triangle";
+    double  m_freq   = 38400;
+    double  m_amp    = 1.0;
+    double  m_offset = 0.0;
+    double  m_phase  = 0.0;
+};
+#include "AmplifierWidget.moc"
+
+AmplifierWidget::AmplifierWidget(int index, QWidget* parent)
+    : QScrollArea(parent), m_index(index)
+{ setWidgetResizable(true); setFrameShape(QFrame::NoFrame); setupUi(); }
+
+void AmplifierWidget::setupUi()
+{
+    auto* c=new QWidget(this); setWidget(c);
+    auto* ml=new QVBoxLayout(c);
+    ml->setContentsMargins(10,10,10,10); ml->setSpacing(8);
+    setupSignalGroup(ml);
+    setupCarrierGroup(ml);
+    setupTempGroup(ml);
+    setupVoltGroup(ml);
+    ml->addStretch();
 }
 
-void MainWindow::blinkLed()
+void AmplifierWidget::setupSignalGroup(QVBoxLayout* l)
 {
-    m_ledOn = !m_ledOn;
-    m_ledLabel->setStyleSheet(
-        m_ledOn?"color:#00e676;font-size:16px;":"color:#444c56;font-size:16px;");
+    auto* grp=new QGroupBox(QString("Amp %1 — Signal & filtre").arg(m_index));
+    auto* g=new QGridLayout(grp); g->setSpacing(6);
+    m_editWav=new QLineEdit("signal_38kHz.wav");
+    m_editFilter=new QLineEdit("filtre_bpf.csv");
+    auto* bw=new QPushButton("Charger WAV"); bw->setProperty("cssClass","primary");
+    auto* bf=new QPushButton("Charger filtre"); bf->setProperty("cssClass","primary");
+    connect(bw,&QPushButton::clicked,this,[this](){
+        QString f=QFileDialog::getOpenFileName(this,"Signal WAV","","WAV (*.wav)");
+        if(!f.isEmpty()) m_editWav->setText(f);});
+    connect(bf,&QPushButton::clicked,this,[this](){
+        QString f=QFileDialog::getOpenFileName(this,"Filtre","","CSV (*.csv);;Tous (*.*)");
+        if(!f.isEmpty()) m_editFilter->setText(f);});
+    g->addWidget(new QLabel("Fichier WAV"),0,0); g->addWidget(m_editWav,0,1); g->addWidget(bw,0,2);
+    g->addWidget(new QLabel("Filtre"),1,0); g->addWidget(m_editFilter,1,1); g->addWidget(bf,1,2);
+    l->addWidget(grp);
 }
 
-void MainWindow::setupVoieBar()
+void AmplifierWidget::setupCarrierGroup(QVBoxLayout* l)
 {
+    auto* grp=new QGroupBox(QString("Amp %1 — Porteuse MLI").arg(m_index));
+    auto* ml2=new QVBoxLayout(grp); ml2->setSpacing(6);
+
+    auto* g=new QGridLayout(); g->setSpacing(6);
+    m_comboCarrier=new QComboBox(); m_comboCarrier->addItems({"Triangle","Dent de scie"});
+    m_spinCFreq=new QDoubleSpinBox(); m_spinCFreq->setRange(1,10e6); m_spinCFreq->setValue(38400); m_spinCFreq->setSuffix(" Hz");
+    m_spinAmp=new QDoubleSpinBox(); m_spinAmp->setRange(0,2); m_spinAmp->setValue(1.0); m_spinAmp->setDecimals(2);
+    m_spinOff=new QDoubleSpinBox(); m_spinOff->setRange(-1,1); m_spinOff->setValue(0.0); m_spinOff->setDecimals(2);
+    g->addWidget(new QLabel("Type porteuse"),0,0); g->addWidget(m_comboCarrier,0,1);
+    g->addWidget(new QLabel("Fréquence"),0,2);     g->addWidget(m_spinCFreq,0,3);
+    g->addWidget(new QLabel("Amplitude (0→2)"),1,0); g->addWidget(m_spinAmp,1,1);
+    g->addWidget(new QLabel("Offset (−1→+1)"),1,2);  g->addWidget(m_spinOff,1,3);
+    ml2->addLayout(g);
+
+    // Canvas MLI dynamique
+    auto* canvas = new MLICanvas(this);
+    canvas->setParams(m_comboCarrier->currentText(),
+                      m_spinCFreq->value(),
+                      m_spinAmp->value(),
+                      m_spinOff->value());
+
+    // Mise à jour automatique quand les paramètres changent
+    auto update = [this, canvas](){
+        canvas->setParams(m_comboCarrier->currentText(),
+                          m_spinCFreq->value(),
+                          m_spinAmp->value(),
+                          m_spinOff->value());
+    };
+    connect(m_comboCarrier, &QComboBox::currentTextChanged, this, update);
+    connect(m_spinCFreq, &QDoubleSpinBox::valueChanged,     this, [update](double){ update(); });
+    connect(m_spinAmp,   &QDoubleSpinBox::valueChanged,     this, [update](double){ update(); });
+    connect(m_spinOff,   &QDoubleSpinBox::valueChanged,     this, [update](double){ update(); });
+
+    // Boutons
+    auto* br=new QHBoxLayout();
+    auto* bm=new QPushButton("▶ Générer MLI"); bm->setProperty("cssClass","primary");
+    auto* ba=new QPushButton("Activer voie");  ba->setProperty("cssClass","warning");
+    ba->setCheckable(true);
+    connect(bm, &QPushButton::clicked, this, [canvas](){
+        canvas->setAnimating(true);
+    });
+    connect(ba, &QPushButton::toggled, this, [ba, canvas](bool on){
+        ba->setText(on?"Désactiver voie":"Activer voie");
+        ba->setProperty("cssClass", on?"danger":"warning");
+        ba->style()->unpolish(ba); ba->style()->polish(ba);
+        canvas->setAnimating(on);
+    });
+    br->addWidget(bm); br->addWidget(ba); br->addStretch();
+    ml2->addLayout(br);
+    ml2->addWidget(canvas);
+    l->addWidget(grp);
+}
+
+void AmplifierWidget::setupTempGroup(QVBoxLayout* l)
+{
+    auto* grp=new QGroupBox("Température");
+    auto* g=new QGridLayout(grp); g->setSpacing(6);
+    m_spinTProbes=new QSpinBox(); m_spinTProbes->setRange(0,8); m_spinTProbes->setValue(2);
+    m_comboTType=new QComboBox(); m_comboTType->addItems({"K","J","T","E","N","R","S","B"});
+    m_spinTFreq=new QDoubleSpinBox(); m_spinTFreq->setRange(0.01,1000); m_spinTFreq->setValue(1); m_spinTFreq->setSuffix(" Hz");
+    m_editTLabel=new QLineEdit(QString("T_AMP%1").arg(m_index));
+    g->addWidget(new QLabel("Nb sondes"),0,0); g->addWidget(m_spinTProbes,0,1);
+    g->addWidget(new QLabel("Type TC"),0,2);   g->addWidget(m_comboTType,0,3);
+    g->addWidget(new QLabel("Freq. acq."),1,0); g->addWidget(m_spinTFreq,1,1);
+    g->addWidget(new QLabel("Label"),1,2);      g->addWidget(m_editTLabel,1,3);
+    l->addWidget(grp);
+}
+
+void AmplifierWidget::setupVoltGroup(QVBoxLayout* l)
+{
+    auto* grp=new QGroupBox("Tension");
+    auto* g=new QGridLayout(grp); g->setSpacing(6);
+    m_spinVCh=new QSpinBox(); m_spinVCh->setRange(0,16); m_spinVCh->setValue(2);
+    m_comboVDiv=new QComboBox(); m_comboVDiv->addItems({"1/10","1/100","1/1000"});
+    m_spinVFreq=new QDoubleSpinBox(); m_spinVFreq->setRange(0.01,1000); m_spinVFreq->setValue(10); m_spinVFreq->setSuffix(" Hz");
+    m_editVLabel=new QLineEdit("V_BUS48");
+    g->addWidget(new QLabel("Nb voies"),0,0);  g->addWidget(m_spinVCh,0,1);
+    g->addWidget(new QLabel("Division"),0,2);  g->addWidget(m_comboVDiv,0,3);
+    g->addWidget(new QLabel("Freq. acq."),1,0); g->addWidget(m_spinVFreq,1,1);
+    g->addWidget(new QLabel("Label"),1,2);      g->addWidget(m_editVLabel,1,3);
+    l->addWidget(grp);
+}
+
+AmplifierConfig AmplifierWidget::config() const {
+    return {m_index,m_editWav->text(),m_editFilter->text(),
+            m_comboCarrier->currentText(),m_spinCFreq->value(),
+            m_spinAmp->value(),m_spinOff->value(),
+            m_spinTProbes->value(),m_comboTType->currentText(),
+            m_spinTFreq->value(),m_editTLabel->text(),
+            m_spinVCh->value(),m_comboVDiv->currentText(),
+            m_spinVFreq->value(),m_editVLabel->text(),
+            0,"",0,""};
+}
+
+
+
+
+ #include "ConfigWindow.h"
+#include "HydroWidget.h"
+#include "AmplifierWidget.h"
+#include "ToolsWidget.h"
+#include "StyleManager.h"
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QFrame>
+#include <QMenuBar>
+
+ConfigWindow::ConfigWindow(QWidget* parent) : QMainWindow(parent)
+{
+    setWindowTitle("ACOUSTIMETER — Configuration");
+    setMinimumSize(900,640); resize(1100,750);
+    setupUi();
+}
+
+void ConfigWindow::setupUi()
+{
+    menuBar()->addMenu("Fichier")->addAction("Sauvegarder JSON");
+    menuBar()->addMenu("Outils");
+    auto* central=new QWidget(this); setCentralWidget(central);
+    auto* mainLayout=new QHBoxLayout(central);
+    mainLayout->setSpacing(0); mainLayout->setContentsMargins(0,0,0,0);
+    setupLeftPanel();
+    mainLayout->addWidget(m_leftPanel);
+    m_tabWidget=new QTabWidget(this);
+    m_tabWidget->setTabPosition(QTabWidget::North);
+    mainLayout->addWidget(m_tabWidget,1);
+    buildTabs();
+}
+
+void ConfigWindow::setupLeftPanel()
+{
+    m_leftPanel=new QWidget(this); m_leftPanel->setFixedWidth(220);
+    m_leftPanel->setObjectName("panelFrame");
+    m_leftPanel->setStyleSheet(
+        "QWidget#panelFrame{background:#161b22;border-right:1px solid #30363d;}");
+    auto* layout=new QVBoxLayout(m_leftPanel);
+    layout->setContentsMargins(12,14,12,14); layout->setSpacing(12);
+
+    auto addSpin=[&](const QString& lbl, QSpinBox*& spin, int def){
+        auto* l=new QLabel(lbl);
+        l->setStyleSheet("font-size:13px;color:#8b949e;font-weight:bold;");
+        auto* row=new QHBoxLayout();
+        auto* bm=new QPushButton("−"); bm->setFixedSize(26,26);
+        spin=new QSpinBox(); spin->setRange(0,999);
+        spin->setValue(def); spin->setMinimumHeight(28);
+        auto* bp=new QPushButton("+"); bp->setFixedSize(26,26);
+        row->addWidget(bm); row->addWidget(spin); row->addWidget(bp);
+        connect(bm,&QPushButton::clicked,[spin](){spin->setValue(spin->value()-1);});
+        connect(bp,&QPushButton::clicked,[spin](){spin->setValue(spin->value()+1);});
+        layout->addWidget(l); layout->addLayout(row);
+    };
+    addSpin("Hydrophones",   m_spinHydros, 4);
+    addSpin("Amplificateurs",m_spinAmplis, 2);
+
+    auto* btnVal=new QPushButton("▶  VALIDER");
+    btnVal->setProperty("cssClass","connect"); btnVal->setMinimumHeight(34);
+    connect(btnVal,&QPushButton::clicked,this,&ConfigWindow::onValidate);
+    layout->addWidget(btnVal);
+
+    auto* sep=new QFrame(); sep->setFrameShape(QFrame::HLine);
+    sep->setStyleSheet("color:#30363d;"); layout->addWidget(sep);
+
+    auto* lc=new QLabel("Fichier config");
+    lc->setStyleSheet("font-size:13px;color:#8b949e;font-weight:bold;");
+    layout->addWidget(lc);
+    auto* bs=new QPushButton("Sauvegarder JSON");
+    bs->setProperty("cssClass","primary"); bs->setMinimumHeight(30);
+    auto* bl=new QPushButton("Charger JSON");
+    bl->setProperty("cssClass","warning"); bl->setMinimumHeight(30);
+    auto* be=new QPushButton("Exporter");
+    be->setProperty("cssClass","primary"); be->setMinimumHeight(30);
+    layout->addWidget(bs); layout->addWidget(bl); layout->addWidget(be);
+    layout->addStretch();
+}
+
+void ConfigWindow::onValidate()
+{
+    buildTabs();
+    // Émettre le signal vers MainWindow avec le nouveau nombre de voies
+    m_config.hydrophones.clear();
+    m_config.amplifiers.clear();
+    for(int i=1;i<=m_spinHydros->value();i++){
+        HydrophoneConfig h; h.id=i; h.channel=i;
+        m_config.hydrophones.append(h);
+    }
+    for(int i=1;i<=m_spinAmplis->value();i++){
+        AmplifierConfig a; a.id=i;
+        m_config.amplifiers.append(a);
+    }
+    emit configChanged(m_config);
+}
+
+void ConfigWindow::buildTabs()
+{
+    if(!m_tabWidget||!m_spinHydros||!m_spinAmplis) return;
+    m_tabWidget->clear();
+    int nh=m_spinHydros->value(), na=m_spinAmplis->value();
+    for(int i=1;i<=nh;i++)
+        m_tabWidget->addTab(new HydroWidget(i,this), QString("Hydro %1").arg(i));
+    for(int i=1;i<=na;i++)
+        m_tabWidget->addTab(new AmplifierWidget(i,this), QString("Amp %1").arg(i));
+    m_tabWidget->addTab(new ToolsWidget(this),"⚙ Outils");
+    if(m_tabWidget->count()>0) m_tabWidget->setCurrentIndex(0);
+}
+
+
+
+
+void MainWindow::openConfig()
+{
+    try {
+        if(!m_configWindow){
+            m_configWindow=new ConfigWindow(nullptr);
+            m_configWindow->setStyleSheet(StyleManager::instance().configStyleSheet());
+            m_configWindow->setAttribute(Qt::WA_DeleteOnClose,false);
+            m_configWindow->resize(1100,750);
+            m_configWindow->move(this->x()+60,this->y()+40);
+
+            // Connexion Config → Supervision
+            connect(m_configWindow, &ConfigWindow::configChanged,
+                    this, &MainWindow::onConfigChanged);
+
+            connect(m_configWindow,&QObject::destroyed,
+                    this,[this](){m_configWindow=nullptr;});
+        }
+        m_configWindow->show();
+        m_configWindow->raise();
+        m_configWindow->activateWindow();
+    } catch(...){ qDebug()<<"Erreur ConfigWindow"; }
+}
+
+
+
+
+void MainWindow::onConfigChanged(const SystemConfig& cfg)
+{
+    // Mettre à jour la barre des voies selon le nouveau nombre de hydros/amplis
     auto* layout = qobject_cast<QHBoxLayout*>(ui->voieBar->layout());
+    if(!layout) return;
+
+    // Supprimer tous les widgets de la voie bar
+    QLayoutItem* item;
+    while((item=layout->takeAt(0))!=nullptr){
+        if(item->widget()) item->widget()->deleteLater();
+        delete item;
+    }
+    m_voieBtns.clear();
+
+    // Reconstruire avec le nouveau nombre de voies
     struct VoieDef { QString key,label,color; };
-    QList<VoieDef> hydros={{"h1","H1","#00d4ff"},{"h2","H2","#00e676"},
-                            {"h3","H3","#ffaa00"},{"h4","H4","#ff6b9d"}};
-    QList<VoieDef> amplis={{"a1","A1","#c792ea"},{"a2","A2","#89ddff"}};
+    QList<VoieDef> hydros, amplis;
+    QStringList hColors={"#00d4ff","#00e676","#ffaa00","#ff6b9d","#ff9944","#44ffaa"};
+    QStringList aColors={"#c792ea","#89ddff","#ffcc44","#44ccff"};
+
+    for(int i=0;i<cfg.hydrophones.size();i++)
+        hydros.append({QString("h%1").arg(i+1),
+                       QString("H%1").arg(i+1),
+                       hColors[i%hColors.size()]});
+    for(int i=0;i<cfg.amplifiers.size();i++)
+        amplis.append({QString("a%1").arg(i+1),
+                       QString("A%1").arg(i+1),
+                       aColors[i%aColors.size()]});
+
     auto addLbl=[&](const QString& t){
         auto* l=new QLabel(t);
         l->setStyleSheet("color:#6e7681;font-size:13px;font-weight:bold;");
@@ -232,6 +411,7 @@ void MainWindow::setupVoieBar()
             "QPushButton:!checked{color:#444c56;border-color:#444c56;}"
         ).arg(d.color,d.color+"22"));
         btn->setProperty("voieKey",d.key);
+        m_voies[d.key]=true;
         connect(btn,&QPushButton::toggled,this,&MainWindow::onToggleVoie);
         layout->addWidget(btn); m_voieBtns[d.key]=btn;
     };
@@ -239,9 +419,9 @@ void MainWindow::setupVoieBar()
         auto* s=new QFrame(); s->setFrameShape(QFrame::VLine);
         s->setStyleSheet("color:#30363d;"); layout->addWidget(s);
     };
-    addLbl("HYDROS :"); for(auto& d:hydros) addBtn(d);
-    addSep();
-    addLbl("AMPLIS :"); for(auto& d:amplis) addBtn(d);
+
+    if(!hydros.isEmpty()){ addLbl("HYDROS :"); for(auto& d:hydros) addBtn(d); }
+    if(!amplis.isEmpty()){ addSep(); addLbl("AMPLIS :"); for(auto& d:amplis) addBtn(d); }
     addSep();
     auto* info=new QLabel(
         "Fs <span style='color:#00d4ff;font-weight:bold'>96 kHz</span>"
@@ -250,155 +430,8 @@ void MainWindow::setupVoieBar()
     info->setTextFormat(Qt::RichText);
     info->setStyleSheet("font-size:13px;color:#8b949e;");
     layout->addWidget(info); layout->addStretch();
+
+    appendLog("ok", QString("Configuration mise à jour — %1 hydros, %2 amplis")
+              .arg(cfg.hydrophones.size()).arg(cfg.amplifiers.size()));
 }
-
-void MainWindow::setupCharts()
-{
-    auto* grid=qobject_cast<QGridLayout*>(ui->chartsContainer->layout());
-    auto makeBox=[](const QString& title, GraphWidget* gw){
-        auto* box=new QGroupBox(title);
-        auto* l=new QVBoxLayout(box); l->setContentsMargins(4,18,4,4);
-        l->addWidget(gw); return box;
-    };
-    m_graphTime   = new GraphWidget(GraphWidget::TimeDomain,  this);
-    m_graphFFT    = new GraphWidget(GraphWidget::FFT,         this);
-    m_graphLevels = new GraphWidget(GraphWidget::Levels,      this);
-    m_graphSpec   = new GraphWidget(GraphWidget::Spectrogram, this);
-    grid->addWidget(makeBox("Signal temporel — hydrophones", m_graphTime),   0,0);
-    grid->addWidget(makeBox("Spectrogramme — fréq. / temps", m_graphSpec),   0,1);
-    grid->addWidget(makeBox("FFT",                           m_graphFFT),    1,0);
-    grid->addWidget(makeBox("Niveaux — dB re 1µPa",         m_graphLevels), 1,1);
-    grid->setRowStretch(0,1); grid->setRowStretch(1,1);
-}
-
-void MainWindow::setupSidebar()
-{
-    auto* scroll=new QScrollArea();
-    scroll->setWidgetResizable(true); scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setStyleSheet("background:#161b22;border-left:1px solid #30363d;");
-    auto* container=new QWidget();
-    auto* layout=new QVBoxLayout(container);
-    layout->setSpacing(0); layout->setContentsMargins(0,0,0,0);
-    auto addTextSection=[&](const QString& title,
-                             QList<QPair<QString,QString>> rows,
-                             QList<QString> states){
-        auto* box=new QGroupBox(title);
-        auto* l=new QVBoxLayout(box); l->setSpacing(3); l->setContentsMargins(8,18,8,6);
-        for(int i=0;i<rows.size();i++){
-            auto& row=rows[i];
-            auto* hl=new QHBoxLayout();
-            auto* lbl=new QLabel(row.first); lbl->setStyleSheet("font-size:13px;color:#8b949e;");
-            auto* val=new QLabel(row.second);
-            QString st=i<states.size()?states[i]:"ok";
-            val->setStyleSheet(
-                st=="warn"?"font-weight:bold;font-size:14px;color:#ffaa00;":
-                st=="err" ?"font-weight:bold;font-size:14px;color:#ff4444;":
-                st=="info"?"font-weight:bold;font-size:14px;color:#00d4ff;":
-                           "font-weight:bold;font-size:14px;color:#00e676;");
-            val->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
-            hl->addWidget(lbl); hl->addWidget(val); l->addLayout(hl);
-        }
-        layout->addWidget(box);
-    };
-    auto addMiniSection=[&](const QString& title, GraphWidget*& gw,
-                             const QColor& col, const QString& unit,
-                             const QString& label, double lo, double hi){
-        auto* box=new QGroupBox(title); box->setFixedHeight(90);
-        auto* l=new QVBoxLayout(box); l->setContentsMargins(2,16,2,2);
-        gw=new GraphWidget(GraphWidget::MiniPlot,this);
-        gw->setMiniPlotColor(col); gw->setMiniPlotUnit(unit);
-        gw->setMiniPlotLabel(label); gw->setMiniPlotRange(lo,hi);
-        l->addWidget(gw); layout->addWidget(box);
-    };
-    addTextSection("Amplificateurs",{{"AMP 1","ACTIF"},{"AMP 2","STANDBY"}},{"ok","warn"});
-    addTextSection("Hydrophones",
-        {{"Hydro 1","ACQ"},{"Hydro 2","ACQ"},{"Hydro 3","BRUIT↑"},{"Hydro 4","DÉCO"}},
-        {"ok","ok","warn","err"});
-    addMiniSection("Température T1 (K)",m_miniTemp1,QColor("#00e676"),"°C","T1",0,80);
-    addMiniSection("Température T2 (J)",m_miniTemp2,QColor("#ffaa00"),"°C","T2",0,80);
-    addMiniSection("V Bus 48V",         m_miniV1,   QColor("#00d4ff"),"V", "VBus",40,55);
-    addMiniSection("V Alim 12V",        m_miniV2,   QColor("#89ddff"),"V", "V12",10,15);
-    addMiniSection("Courant I AMP1",    m_miniI1,   QColor("#ffaa00"),"A", "I1",0,6);
-    addMiniSection("Courant I AMP2",    m_miniI2,   QColor("#c792ea"),"A", "I2",0,6);
-    addTextSection("Mesure Sv",
-        {{"Gîte","127.5°"},{"Site","32.0°"},{"Sv moyen","−18.4 dB"},{"Progression","35%"}},
-        {"info","info","info","info"});
-    layout->addStretch();
-    scroll->setWidget(container);
-    auto* sl=qobject_cast<QVBoxLayout*>(ui->sidebar->layout());
-    ui->sidebar->setStyleSheet("background:#161b22;border-left:1px solid #30363d;");
-    sl->addWidget(scroll);
-}
-
-void MainWindow::setupLogView()
-{
-    ui->logView->setReadOnly(true);
-    ui->logView->document()->setMaximumBlockCount(200);
-}
-
-void MainWindow::appendLog(const QString& level, const QString& msg)
-{
-    QString ts=QDateTime::currentDateTime().toString("hh:mm:ss");
-    QString color=(level=="ok")?"#00e676":(level=="warn")?"#ffaa00":"#ff4444";
-    ui->logView->append(
-        QString("<span style='color:#6e7681;font-size:12px'>%1</span>"
-                "&nbsp;&nbsp;<span style='color:%2;font-size:13px'>%3</span>")
-        .arg(ts,color,msg));
-}
-
-void MainWindow::setupStatusBar()
-{
-    statusBar()->showMessage(
-        QString("Connecté — %1 · NI PXIe-8301 · Fs 96 kHz").arg(m_connConfig.chassis));
-}
-
-void MainWindow::onToggleVoie()
-{
-    auto* btn=qobject_cast<QPushButton*>(sender()); if(!btn) return;
-    QString key=btn->property("voieKey").toString(); bool on=btn->isChecked();
-    m_voies[key]=on;
-    if(m_graphTime)   m_graphTime->setVoieActive(key,on);
-    if(m_graphLevels) m_graphLevels->setVoieActive(key,on);
-    if(m_graphSpec)   m_graphSpec->setVoieActive(key,on);
-}
-
-void MainWindow::updateMetrics()
-{
-    auto* rng=QRandomGenerator::global();
-    if(m_miniTemp1) m_miniTemp1->pushMiniValue(24.0+rng->generateDouble()*0.8);
-    if(m_miniTemp2) m_miniTemp2->pushMiniValue(47.0+rng->generateDouble()*2.0);
-    if(m_miniV1)    m_miniV1->pushMiniValue(48.0+rng->generateDouble()*0.6-0.3);
-    if(m_miniV2)    m_miniV2->pushMiniValue(12.0+rng->generateDouble()*0.3-0.15);
-    if(m_miniI1)    m_miniI1->pushMiniValue(3.5+rng->generateDouble()*0.8);
-    if(m_miniI2)    m_miniI2->pushMiniValue(0.3+rng->generateDouble()*0.2);
-}
-
-void MainWindow::toggleTheme()
-{
-    auto& sm=StyleManager::instance();
-    sm.setTheme(sm.isDark()?StyleManager::Light:StyleManager::Dark);
-    setStyleSheet(sm.mainStyleSheet());
-    if(m_configWindow) m_configWindow->setStyleSheet(sm.configStyleSheet());
-    update();
-}
-
-void MainWindow::openConfig()
-{
-    try {
-        if(!m_configWindow){
-            m_configWindow=new ConfigWindow(nullptr);
-            m_configWindow->setStyleSheet(StyleManager::instance().configStyleSheet());
-            m_configWindow->setAttribute(Qt::WA_DeleteOnClose,false);
-            m_configWindow->resize(1100,750);
-            m_configWindow->move(this->x()+60,this->y()+40);
-            connect(m_configWindow,&QObject::destroyed,
-                    this,[this](){m_configWindow=nullptr;});
-        }
-        m_configWindow->show();
-        m_configWindow->raise();
-        m_configWindow->activateWindow();
-    } catch(...){ qDebug()<<"Erreur ConfigWindow"; }
-}
-
-
 
