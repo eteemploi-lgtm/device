@@ -1,15 +1,5 @@
-DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Batteries — Tension & Température éléments</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
 /* ============================================================
-   PALETTE / BASE  (cohérent avec l'IHM Devices industrielle)
+   PALETTE / BASE  (IHM Devices industrielle)
    ============================================================ */
 :root{
   --bg:#0c141d;
@@ -43,9 +33,7 @@ body{
 /* ============================================================
    GRILLE 2 COLONNES : Température (gauche) / Tension (droite)
    ============================================================ */
-.bat-grid{
-  display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;
-}
+.bat-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
 @media(max-width:900px){.bat-grid{grid-template-columns:1fr}}
 
 .col{display:flex;flex-direction:column;gap:16px}
@@ -65,11 +53,9 @@ body{
 .card-head h3{font-size:15px;font-weight:600}
 .card-head .sub{font-size:11px;color:var(--txt-faint);font-family:'IBM Plex Mono',monospace}
 
-/* ---- Bloc métriques (Ue max / min / delta / cible / ratio) ---- */
+/* ---- Bloc métriques ---- */
 .metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line-soft)}
-.metric{
-  background:var(--card-2);padding:13px 15px;display:flex;flex-direction:column;gap:5px;
-}
+.metric{background:var(--card-2);padding:13px 15px;display:flex;flex-direction:column;gap:5px}
 .metric.full{grid-column:1/-1}
 .metric .lbl{font-size:11px;color:var(--txt-dim);text-transform:uppercase;letter-spacing:.6px}
 .metric .val{font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:600;line-height:1}
@@ -79,7 +65,6 @@ body{
 .metric .val.delta-ok{color:var(--ok)}
 .metric .val.delta-warn{color:var(--warn)}
 
-/* barre ratio d'équilibrage */
 .ratio-bar{height:6px;border-radius:4px;background:#0a121a;overflow:hidden;margin-top:2px}
 .ratio-bar > i{display:block;height:100%;border-radius:4px}
 
@@ -94,220 +79,13 @@ body{
 svg{display:block;width:100%;height:auto;font-family:'IBM Plex Mono',monospace}
 .gridline{stroke:var(--line-soft);stroke-width:1;stroke-dasharray:2 4}
 .axis{stroke:var(--line);stroke-width:1.2}
-.tick-txt{fill:var(--txt-faint);font-size:10px}
-.xlabel{fill:var(--txt-dim);font-size:11px;font-weight:500}
+
+/* ---- CORRECTIONS LISIBILITÉ AXES ---- */
+.tick-txt{fill:#e6eef5;font-size:10px}              /* axe Y (4.3, 4, 3.7…) */
+.xlabel{fill:#ffffff;font-size:11px;font-weight:600} /* axe X (e1…e7) */
+.valtxt{fill:#b8c8d6;font-size:9px}                  /* valeurs au-dessus des bâtons */
+
 .stem{stroke-width:2;stroke-linecap:round}
 .marker{stroke:#0c141d;stroke-width:1.5}
 .refline{stroke-width:1.4;stroke-dasharray:6 4;fill:none}
 .reftxt{font-size:10px;font-weight:600}
-.valtxt{fill:var(--txt-dim);font-size:9px}
-</style>
-</head>
-<body>
-
-<!-- ════════════════════ SECTION BATTERIES ════════════════════ -->
-<section id="batteries" class="tab-content">
-
-  <div class="tab-head">
-    <div>
-      <h2>Batteries</h2>
-      <p>Surveillance équilibrage — tensions & températures éléments</p>
-    </div>
-    <span class="src">stSba2Scg_EltTension · stSba2Scg_EltTemperature</span>
-  </div>
-
-  <div class="bat-grid">
-
-    <!-- ───────────── COLONNE GAUCHE : TEMPÉRATURE ───────────── -->
-    <div class="col">
-      <div class="card">
-        <div class="card-head">
-          <div class="ttl"><span class="dot t"></span><h3>Température éléments</h3></div>
-          <span class="sub">°C</span>
-        </div>
-        <div class="metrics">
-          <div class="metric accent-t"><span class="lbl">T max</span><span class="val" id="tMax">– <small>°C</small></span></div>
-          <div class="metric accent-t"><span class="lbl">T min</span><span class="val" id="tMin">– <small>°C</small></span></div>
-          <div class="metric"><span class="lbl">Δ Température</span><span class="val" id="tDelta">– <small>°C</small></span></div>
-          <div class="metric"><span class="lbl">Cible équilibrage</span><span class="val" id="tCible">– <small>°C</small></span></div>
-          <div class="metric full"><span class="lbl">Ratio équilibrage</span>
-            <span class="val" id="tRatio">– <small>%</small></span>
-            <div class="ratio-bar"><i id="tRatioBar" style="width:0%;background:var(--accent-t)"></i></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card chart-card">
-        <div class="chart-title">
-          <span>Diagramme en bâtons — Température / élément</span>
-          <span class="legend"><span><i style="border-color:var(--danger)"></i>T élt Max</span></span>
-        </div>
-        <div id="chartTemp"></div>
-      </div>
-    </div>
-
-    <!-- ───────────── COLONNE DROITE : TENSION ───────────── -->
-    <div class="col">
-      <div class="card">
-        <div class="card-head">
-          <div class="ttl"><span class="dot u"></span><h3>Tension éléments</h3></div>
-          <span class="sub">V</span>
-        </div>
-        <div class="metrics">
-          <div class="metric accent-u"><span class="lbl">Ue max</span><span class="val" id="uMax">– <small>V</small></span></div>
-          <div class="metric accent-u"><span class="lbl">Ue min</span><span class="val" id="uMin">– <small>V</small></span></div>
-          <div class="metric"><span class="lbl">Δ Uel</span><span class="val" id="uDelta">– <small>mV</small></span></div>
-          <div class="metric"><span class="lbl">Cible équilibrage</span><span class="val" id="uCible">– <small>V</small></span></div>
-          <div class="metric full"><span class="lbl">Ratio équilibrage</span>
-            <span class="val" id="uRatio">– <small>%</small></span>
-            <div class="ratio-bar"><i id="uRatioBar" style="width:0%;background:var(--accent-u)"></i></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card chart-card">
-        <div class="chart-title">
-          <span>Diagramme en bâtons — Tension / élément</span>
-          <span class="legend">
-            <span><i style="border-color:var(--danger)"></i>Tens. élt Max</span>
-            <span><i style="border-color:var(--warn)"></i>Tens. élt Min</span>
-          </span>
-        </div>
-        <div id="chartTension"></div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<script>
-/* ============================================================
-   CONFIG (depuis fichier de configuration — image 3)
-   ============================================================ */
-const CFG = {
-  TensionElementMin: 2.70,
-  TensionElementMax: 4.20,
-  TemperatureElementMax: 60.0,
-};
-
-/* ============================================================
-   DONNÉES TEMPS RÉEL — à remplacer par les valeurs WebSocket.
-   Ici : démo. 7 éléments tension (e1..e7), 13 éléments temp (e1..e13).
-   ============================================================ */
-const DATA = {
-  // stSba2Scg_EltTension -> uelement[i] (V)
-  tension: [3.78, 3.81, 3.76, 3.84, 3.79, 3.72, 3.83],
-  // stSba2Scg_EltTemperature -> elt[i] (°C)
-  temperature: [38, 41, 39, 44, 42, 37, 40, 43, 45, 38, 41, 39, 42],
-};
-
-/* ============================================================
-   CALCUL DES MÉTRIQUES
-   ============================================================ */
-function stats(arr){
-  const max=Math.max(...arr), min=Math.min(...arr);
-  return {max, min, delta:max-min, cible:min}; // cible = équilibrage vers le mini
-}
-
-function renderMetrics(){
-  // ---- Tension ----
-  const u=stats(DATA.tension);
-  const uRatio = (u.delta/u.cible)*100;             // dispersion relative (%)
-  document.getElementById('uMax').innerHTML  = u.max.toFixed(3)+' <small>V</small>';
-  document.getElementById('uMin').innerHTML  = u.min.toFixed(3)+' <small>V</small>';
-  const uDeltaEl=document.getElementById('uDelta');
-  uDeltaEl.innerHTML = (u.delta*1000).toFixed(0)+' <small>mV</small>';
-  uDeltaEl.classList.add(u.delta*1000>50?'delta-warn':'delta-ok');
-  document.getElementById('uCible').innerHTML = u.cible.toFixed(3)+' <small>V</small>';
-  document.getElementById('uRatio').innerHTML = uRatio.toFixed(2)+' <small>%</small>';
-  document.getElementById('uRatioBar').style.width = Math.min(uRatio*6,100)+'%';
-
-  // ---- Température ----
-  const t=stats(DATA.temperature);
-  const tRatio = (t.delta/t.max)*100;
-  document.getElementById('tMax').innerHTML  = t.max.toFixed(1)+' <small>°C</small>';
-  document.getElementById('tMin').innerHTML  = t.min.toFixed(1)+' <small>°C</small>';
-  const tDeltaEl=document.getElementById('tDelta');
-  tDeltaEl.innerHTML = t.delta.toFixed(1)+' <small>°C</small>';
-  tDeltaEl.classList.add(t.delta>10?'delta-warn':'delta-ok');
-  document.getElementById('tCible').innerHTML = t.cible.toFixed(1)+' <small>°C</small>';
-  document.getElementById('tRatio').innerHTML = tRatio.toFixed(2)+' <small>%</small>';
-  document.getElementById('tRatioBar').style.width = Math.min(tRatio*4,100)+'%';
-}
-
-/* ============================================================
-   GRAPHE BÂTONS (stem plot type matplotlib) — rendu SVG
-   ============================================================ */
-function stemChart(targetId, opts){
-  const {values, prefix, yMin, yMax, accent, unit, decimals, refs} = opts;
-  const W=560, H=320;
-  const M={t:18, r:58, b:34, l:42};
-  const iw=W-M.l-M.r, ih=H-M.t-M.b;
-  const n=values.length;
-  const x = i => M.l + (iw)*( (i+0.5)/n );
-  const y = v => M.t + ih*(1-(v-yMin)/(yMax-yMin));
-
-  // ticks Y (≈6)
-  const nT=6, ticks=[];
-  for(let k=0;k<=nT;k++) ticks.push(yMin+(yMax-yMin)*k/nT);
-
-  let s=`<svg viewBox="0 0 ${W} ${H}" role="img">`;
-
-  // gridlines + ticks Y
-  ticks.forEach(tk=>{
-    const yy=y(tk).toFixed(1);
-    s+=`<line class="gridline" x1="${M.l}" x2="${W-M.r}" y1="${yy}" y2="${yy}"/>`;
-    s+=`<text class="tick-txt" x="${M.l-7}" y="${(+yy+3)}" text-anchor="end">${tk.toFixed(tk%1?1:0)}</text>`;
-  });
-  // axes
-  s+=`<line class="axis" x1="${M.l}" y1="${M.t}" x2="${M.l}" y2="${M.t+ih}"/>`;
-  s+=`<line class="axis" x1="${M.l}" y1="${M.t+ih}" x2="${W-M.r}" y2="${M.t+ih}"/>`;
-
-  // lignes de référence (Max / Min)
-  refs.forEach(r=>{
-    if(r.v<yMin||r.v>yMax) return;
-    const yy=y(r.v).toFixed(1);
-    s+=`<line class="refline" stroke="${r.color}" x1="${M.l}" x2="${W-M.r}" y1="${yy}" y2="${yy}"/>`;
-    s+=`<text class="reftxt" fill="${r.color}" x="${W-M.r+5}" y="${(+yy+3)}">${r.label}</text>`;
-  });
-
-  // bâtons + marqueurs + valeurs + labels X
-  values.forEach((v,i)=>{
-    const xx=x(i).toFixed(1), yy=y(v).toFixed(1), y0=(M.t+ih).toFixed(1);
-    s+=`<line class="stem" stroke="${accent}" x1="${xx}" y1="${y0}" x2="${xx}" y2="${yy}"/>`;
-    s+=`<circle class="marker" fill="${accent}" cx="${xx}" cy="${yy}" r="4.5"/>`;
-    s+=`<text class="valtxt" x="${xx}" y="${(+yy-9)}" text-anchor="middle">${v.toFixed(decimals)}</text>`;
-    s+=`<text class="xlabel" x="${xx}" y="${M.t+ih+18}" text-anchor="middle">${prefix}${i+1}</text>`;
-  });
-
-  s+=`</svg>`;
-  document.getElementById(targetId).innerHTML=s;
-}
-
-/* ============================================================
-   RENDU
-   ============================================================ */
-function render(){
-  renderMetrics();
-
-  // Tension : axe zoomé pour visualiser l'équilibrage (sinon delta invisible)
-  stemChart('chartTension',{
-    values:DATA.tension, prefix:'e', unit:'V', decimals:3,
-    yMin:2.5, yMax:4.3, accent:'#36b6ff',
-    refs:[
-      {v:CFG.TensionElementMax, label:'Tens. élt Max', color:'#ff5a6e'},
-      {v:CFG.TensionElementMin, label:'Tens. élt Min', color:'#ffb547'},
-    ]
-  });
-
-  // Température : 13 éléments, 1 ligne max
-  stemChart('chartTemp',{
-    values:DATA.temperature, prefix:'e', unit:'°C', decimals:1,
-    yMin:20, yMax:65, accent:'#ff9e3d',
-    refs:[
-      {v:CFG.TemperatureElementMax, label:'T élt Max', color:'#ff5a6e'},
-    ]
-  });
-}
-render();
-</script>
