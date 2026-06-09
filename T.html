@@ -1,91 +1,217 @@
 /* ============================================================
-   PALETTE / BASE  (IHM Devices industrielle)
+   CONFIG
    ============================================================ */
-:root{
-  --bg:#0c141d;
-  --bg-grad:radial-gradient(1200px 600px at 80% -10%, #15222f 0%, #0c141d 60%);
-  --card:#141f2b;
-  --card-2:#101a24;
-  --line:#22323f;
-  --line-soft:#1a2832;
-  --txt:#e6eef5;
-  --txt-dim:#8aa0b2;
-  --txt-faint:#5d7385;
-  --accent-u:#36b6ff;     /* Tension : bleu */
-  --accent-u-soft:#36b6ff22;
-  --accent-t:#ff9e3d;     /* Température : ambre */
-  --accent-t-soft:#ff9e3d22;
-  --ok:#3ddc97;
-  --warn:#ffb547;
-  --danger:#ff5a6e;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{
-  font-family:'IBM Plex Sans',sans-serif;
-  background:var(--bg);background-image:var(--bg-grad);
-  color:var(--txt);padding:24px;min-height:100vh;
-}
-.tab-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px}
-.tab-head h2{font-size:22px;font-weight:600;letter-spacing:.3px}
-.tab-head p{color:var(--txt-dim);font-size:13px}
-.tab-head .src{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--txt-faint);background:#0a121a;border:1px solid var(--line);padding:4px 9px;border-radius:6px}
+const CFG = {
+  TensionElementMin: 2.70,
+  TensionElementMax: 4.20,
+  TemperatureElementMax: 60.0,
+};
 
 /* ============================================================
-   GRILLE 2 COLONNES : Température (gauche) / Tension (droite)
+   DONNÉES TEMPS RÉEL
    ============================================================ */
-.bat-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
-@media(max-width:900px){.bat-grid{grid-template-columns:1fr}}
+const DATA = {
+  tension: [0, 0, 0, 0, 0, 0, 0],
+  temperature: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+};
 
-.col{display:flex;flex-direction:column;gap:16px}
+/* ============================================================
+   WEBSOCKET BACKEND
+   ============================================================ */
+let socket = null;
 
-.card{
-  background:var(--card);border:1px solid var(--line);border-radius:14px;
-  box-shadow:0 8px 28px -16px #000;overflow:hidden;
+function connectBackend() {
+  socket = new WebSocket("ws://192.168.124.22:5500");
+
+  socket.onopen = function () {
+    console.log("[BATTERIE] WebSocket connecté");
+
+    socket.send(JSON.stringify({
+      type: "cmd_battery_subscribe"
+    }));
+  };
+
+  socket.onmessage = function (event) {
+    try {
+      const msg = JSON.parse(event.data);
+
+      if (msg.type === "battery_state") {
+        updateBatteryFromBackend(msg.battery);
+      }
+
+      if (msg.type === "state" && msg.battery) {
+        updateBatteryFromBackend(msg.battery);
+      }
+
+    } catch (e) {
+      console.error("[BATTERIE] JSON invalide :", event.data);
+    }
+  };
+
+  socket.onerror = function (err) {
+    console.error("[BATTERIE] WebSocket erreur :", err);
+  };
+
+  socket.onclose = function () {
+    console.warn("[BATTERIE] WebSocket fermé, reconnexion dans 2s");
+    setTimeout(connectBackend, 2000);
+  };
 }
-.card-head{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:14px 16px;border-bottom:1px solid var(--line-soft);
+
+function updateBatteryFromBackend(battery) {
+  if (!battery) return;
+
+  if (Array.isArray(battery.tension)) {
+    DATA.tension = battery.tension.map(Number);
+  }
+
+  if (Array.isArray(battery.temperature)) {
+    DATA.temperature = battery.temperature.map(Number);
+  }
+
+  render();
 }
-.card-head .ttl{display:flex;align-items:center;gap:10px}
-.dot{width:9px;height:9px;border-radius:50%}
-.dot.u{background:var(--accent-u);box-shadow:0 0 10px var(--accent-u)}
-.dot.t{background:var(--accent-t);box-shadow:0 0 10px var(--accent-t)}
-.card-head h3{font-size:15px;font-weight:600}
-.card-head .sub{font-size:11px;color:var(--txt-faint);font-family:'IBM Plex Mono',monospace}
 
-/* ---- Bloc métriques ---- */
-.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line-soft)}
-.metric{background:var(--card-2);padding:13px 15px;display:flex;flex-direction:column;gap:5px}
-.metric.full{grid-column:1/-1}
-.metric .lbl{font-size:11px;color:var(--txt-dim);text-transform:uppercase;letter-spacing:.6px}
-.metric .val{font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:600;line-height:1}
-.metric .val small{font-size:12px;color:var(--txt-dim);font-weight:400;margin-left:3px}
-.metric.accent-u .val{color:var(--accent-u)}
-.metric.accent-t .val{color:var(--accent-t)}
-.metric .val.delta-ok{color:var(--ok)}
-.metric .val.delta-warn{color:var(--warn)}
+/* ============================================================
+   CALCUL DES MÉTRIQUES
+   ============================================================ */
+function stats(arr) {
+  const clean = arr.filter(v => Number.isFinite(v));
 
-.ratio-bar{height:6px;border-radius:4px;background:#0a121a;overflow:hidden;margin-top:2px}
-.ratio-bar > i{display:block;height:100%;border-radius:4px}
+  if (clean.length === 0) {
+    return { max: 0, min: 0, delta: 0, cible: 0 };
+  }
 
-/* ---- Graphe bâtons (SVG) ---- */
-.chart-card{padding:14px 10px 6px}
-.chart-card .chart-title{
-  font-size:12px;color:var(--txt-dim);font-family:'IBM Plex Mono',monospace;
-  padding:0 8px 8px;display:flex;justify-content:space-between;align-items:center;
+  const max = Math.max(...clean);
+  const min = Math.min(...clean);
+
+  return {
+    max,
+    min,
+    delta: max - min,
+    cible: min
+  };
 }
-.legend{display:flex;gap:14px;font-size:10.5px;color:var(--txt-faint)}
-.legend i{display:inline-block;width:18px;height:0;border-top-width:2px;border-top-style:dashed;vertical-align:middle;margin-right:5px}
-svg{display:block;width:100%;height:auto;font-family:'IBM Plex Mono',monospace}
-.gridline{stroke:var(--line-soft);stroke-width:1;stroke-dasharray:2 4}
-.axis{stroke:var(--line);stroke-width:1.2}
 
-/* ---- CORRECTIONS LISIBILITÉ AXES ---- */
-.tick-txt{fill:#e6eef5;font-size:10px}              /* axe Y (4.3, 4, 3.7…) */
-.xlabel{fill:#ffffff;font-size:11px;font-weight:600} /* axe X (e1…e7) */
-.valtxt{fill:#b8c8d6;font-size:9px}                  /* valeurs au-dessus des bâtons */
+function renderMetrics() {
+  const u = stats(DATA.tension);
+  const uRatio = u.cible > 0 ? (u.delta / u.cible) * 100 : 0;
 
-.stem{stroke-width:2;stroke-linecap:round}
-.marker{stroke:#0c141d;stroke-width:1.5}
-.refline{stroke-width:1.4;stroke-dasharray:6 4;fill:none}
-.reftxt{font-size:10px;font-weight:600}
+  document.getElementById("uMax").innerHTML = u.max.toFixed(3) + " <small>V</small>";
+  document.getElementById("uMin").innerHTML = u.min.toFixed(3) + " <small>V</small>";
+
+  const uDeltaEl = document.getElementById("uDelta");
+  uDeltaEl.classList.remove("delta-warn", "delta-ok");
+  uDeltaEl.innerHTML = (u.delta * 1000).toFixed(0) + " <small>mV</small>";
+  uDeltaEl.classList.add(u.delta * 1000 > 50 ? "delta-warn" : "delta-ok");
+
+  document.getElementById("uCible").innerHTML = u.cible.toFixed(3) + " <small>V</small>";
+  document.getElementById("uRatio").innerHTML = uRatio.toFixed(2) + " <small>%</small>";
+  document.getElementById("uRatioBar").style.width = Math.min(uRatio * 6, 100) + "%";
+
+  const t = stats(DATA.temperature);
+  const tRatio = t.max > 0 ? (t.delta / t.max) * 100 : 0;
+
+  document.getElementById("tMax").innerHTML = t.max.toFixed(1) + " <small>°C</small>";
+  document.getElementById("tMin").innerHTML = t.min.toFixed(1) + " <small>°C</small>";
+
+  const tDeltaEl = document.getElementById("tDelta");
+  tDeltaEl.classList.remove("delta-warn", "delta-ok");
+  tDeltaEl.innerHTML = t.delta.toFixed(1) + " <small>°C</small>";
+  tDeltaEl.classList.add(t.delta > 10 ? "delta-warn" : "delta-ok");
+
+  document.getElementById("tCible").innerHTML = t.cible.toFixed(1) + " <small>°C</small>";
+  document.getElementById("tRatio").innerHTML = tRatio.toFixed(2) + " <small>%</small>";
+  document.getElementById("tRatioBar").style.width = Math.min(tRatio * 4, 100) + "%";
+}
+
+/* ============================================================
+   GRAPHE SVG
+   ============================================================ */
+function stemChart(targetId, opts) {
+  const { values, prefix, yMin, yMax, accent, decimals, refs } = opts;
+  const W = 560, H = 320;
+  const M = { t: 18, r: 58, b: 40, l: 42 };
+  const iw = W - M.l - M.r;
+  const ih = H - M.t - M.b;
+  const n = values.length;
+
+  const x = i => M.l + iw * ((i + 0.5) / n);
+  const y = v => M.t + ih * (1 - (v - yMin) / (yMax - yMin));
+
+  const nT = 6;
+  const ticks = [];
+
+  for (let k = 0; k <= nT; k++) {
+    ticks.push(yMin + (yMax - yMin) * k / nT);
+  }
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+
+  ticks.forEach(tk => {
+    const yy = y(tk).toFixed(1);
+    s += `<line class="gridline" x1="${M.l}" x2="${W - M.r}" y1="${yy}" y2="${yy}"/>`;
+    s += `<text class="tick-txt" x="${M.l - 7}" y="${+yy + 3}" text-anchor="end">${tk.toFixed(tk % 1 ? 1 : 0)}</text>`;
+  });
+
+  s += `<line class="axis" x1="${M.l}" y1="${M.t}" x2="${M.l}" y2="${M.t + ih}"/>`;
+  s += `<line class="axis" x1="${M.l}" y1="${M.t + ih}" x2="${W - M.r}" y2="${M.t + ih}"/>`;
+
+  refs.forEach(r => {
+    if (r.v < yMin || r.v > yMax) return;
+
+    const yy = y(r.v).toFixed(1);
+    s += `<line class="refline" stroke="${r.color}" x1="${M.l}" x2="${W - M.r}" y1="${yy}" y2="${yy}"/>`;
+    s += `<text class="reftxt" fill="${r.color}" x="${W - M.r + 5}" y="${+yy + 3}">${r.label}</text>`;
+  });
+
+  values.forEach((v, i) => {
+    const xx = x(i).toFixed(1);
+    const yy = y(v).toFixed(1);
+    const y0 = (M.t + ih).toFixed(1);
+
+    s += `<line class="stem" stroke="${accent}" x1="${xx}" y1="${y0}" x2="${xx}" y2="${yy}"/>`;
+    s += `<circle class="marker" fill="${accent}" cx="${xx}" cy="${yy}" r="4.5"/>`;
+    s += `<text class="valtxt" x="${xx}" y="${+yy - 9}" text-anchor="middle">${v.toFixed(decimals)}</text>`;
+    s += `<text class="xlabel" x="${xx}" y="${M.t + ih + 18}" text-anchor="middle">${prefix}${i + 1}</text>`;
+  });
+
+  s += `</svg>`;
+
+  document.getElementById(targetId).innerHTML = s;
+}
+
+/* ============================================================
+   RENDU
+   ============================================================ */
+function render() {
+  renderMetrics();
+
+  stemChart("chartTension", {
+    values: DATA.tension,
+    prefix: "e",
+    decimals: 3,
+    yMin: 2.5,
+    yMax: 4.3,
+    accent: "#36b6ff",
+    refs: [
+      { v: CFG.TensionElementMax, label: "Tens. élt Max", color: "#ff5a6e" },
+      { v: CFG.TensionElementMin, label: "Tens. élt Min", color: "#ffb547" },
+    ]
+  });
+
+  stemChart("chartTemp", {
+    values: DATA.temperature,
+    prefix: "e",
+    decimals: 1,
+    yMin: 20,
+    yMax: 65,
+    accent: "#ff9e3d",
+    refs: [
+      { v: CFG.TemperatureElementMax, label: "T élt Max", color: "#ff5a6e" },
+    ]
+  });
+}
+
+render();
+connectBackend();
