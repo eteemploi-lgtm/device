@@ -1,0 +1,121 @@
+/* ================================================================
+   ONGLET BATTERIES — CSS entièrement scopé sous #batteries
+   ================================================================ */
+
+#batteries{
+  --bg:#0c141d;
+  --bg-grad:radial-gradient(1200px 600px at 80% -10%, #15222f 0%, #0c141d 60%);
+  --card:#141f2b; --card-2:#101a24;
+  --line:#22323f; --line-soft:#1a2832;
+  --txt:#e6eef5; --txt-dim:#8aa0b2; --txt-faint:#5d7385;
+  --accent-u:#36b6ff; --accent-t:#ff9e3d;
+  --ok:#3ddc97; --warn:#ffb547; --danger:#ff5a6e; --grey:#5d7385;
+  --font:'Segoe UI',system-ui,'DejaVu Sans',sans-serif;
+  --mono:'Cascadia Code','DejaVu Sans Mono',Consolas,'Courier New',monospace;
+  display:flex; flex-direction:column; gap:13px;
+  font-family:var(--font);
+  background:var(--bg); background-image:var(--bg-grad);
+  color:var(--txt);
+  padding:18px;
+}
+#batteries *{box-sizing:border-box;margin:0;padding:0}
+
+#batteries .tab-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+#batteries .tab-head h2{font-size:19px;font-weight:600;letter-spacing:.3px}
+#batteries .tab-head p{color:var(--txt-dim);font-size:12px}
+#batteries .tab-head .src{font-family:var(--mono);font-size:10px;color:var(--txt-faint);background:#0a121a;border:1px solid var(--line);padding:3px 8px;border-radius:6px}
+
+#batteries .card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px -16px #000;overflow:hidden}
+#batteries .card-head{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-bottom:1px solid var(--line-soft)}
+#batteries .card-head .ttl{display:flex;align-items:center;gap:9px}
+#batteries .card-head h3{font-size:14px;font-weight:600}
+#batteries .card-head .sub{font-size:11px;color:var(--txt-faint);font-family:var(--mono)}
+#batteries .dot{width:9px;height:9px;border-radius:50%}
+#batteries .dot.u{background:var(--accent-u);box-shadow:0 0 10px var(--accent-u)}
+#batteries .dot.t{background:var(--accent-t);box-shadow:0 0 10px var(--accent-t)}
+
+/* Bandeau LEDs */
+#batteries .leds{display:flex;flex-wrap:wrap;gap:10px;padding:13px}
+#batteries .led-item{display:flex;align-items:center;gap:9px;background:var(--card-2);border:1px solid var(--line-soft);border-radius:9px;padding:9px 13px;flex:1;min-width:140px}
+#batteries .led{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+#batteries .led.green{background:var(--ok);box-shadow:0 0 9px var(--ok)}
+#batteries .led.red{background:var(--danger);box-shadow:0 0 9px var(--danger)}
+#batteries .led.orange{background:var(--warn);box-shadow:0 0 9px var(--warn)}
+#batteries .led.grey{background:var(--grey)}
+#batteries .led-item .nm{font-weight:600;font-size:12px}
+#batteries .led-item .st{font-size:10px;color:var(--txt-dim);font-family:var(--mono)}
+
+/* KPI */
+#batteries .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:1px;background:var(--line-soft)}
+#batteries .kpi{background:var(--card-2);padding:11px 13px;display:flex;flex-direction:column;gap:5px}
+#batteries .kpi .lbl{font-size:10px;color:var(--txt-dim);text-transform:uppercase;letter-spacing:.6px}
+#batteries .kpi .v{font-family:var(--mono);font-size:17px;font-weight:600}
+#batteries .kpi .v small{font-size:10px;color:var(--txt-dim);font-weight:400;margin-left:3px}
+#batteries .kpi .v.na{color:var(--txt-faint);font-style:italic;font-size:13px}
+
+/* 2 colonnes */
+#batteries .bat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:980px){#batteries .bat-grid{grid-template-columns:1fr}}
+#batteries .col{display:flex;flex-direction:column;gap:13px}
+#batteries .metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line-soft)}
+#batteries .metric{background:var(--card-2);padding:11px 13px;display:flex;flex-direction:column;gap:4px}
+#batteries .metric.full{grid-column:1/-1}
+#batteries .metric .lbl{font-size:10px;color:var(--txt-dim);text-transform:uppercase;letter-spacing:.6px}
+#batteries .metric .val{font-family:var(--mono);font-size:18px;font-weight:600;line-height:1}
+#batteries .metric .val small{font-size:11px;color:var(--txt-dim);font-weight:400;margin-left:3px}
+#batteries .metric.accent-u .val{color:var(--accent-u)} #batteries .metric.accent-t .val{color:var(--accent-t)}
+#batteries .metric .val.z-ok{color:var(--ok)} #batteries .metric .val.z-warn{color:var(--warn)} #batteries .metric .val.z-bad{color:var(--danger)}
+#batteries .ratio-bar{height:5px;border-radius:4px;background:#0a121a;overflow:hidden;margin-top:2px}
+#batteries .ratio-bar > i{display:block;height:100%;border-radius:4px}
+
+/* Modules BMS */
+#batteries .mod-wrap{overflow-x:auto;padding:4px}
+#batteries .mod-table{border-collapse:collapse;width:100%;min-width:520px;font-family:var(--mono);font-size:11px}
+#batteries .mod-table th,#batteries .mod-table td{border:1px solid var(--line);padding:5px 9px;text-align:center;white-space:nowrap}
+#batteries .mod-table thead th{background:var(--card-2);color:var(--txt);font-weight:600}
+#batteries .mod-table tbody th{background:var(--card-2);color:var(--accent-u);text-align:left;font-weight:600}
+#batteries .mod-table td{color:var(--txt)}
+#batteries .mod-table td.warn{color:var(--warn)} #batteries .mod-table td.bad{color:var(--danger)}
+#batteries .mod-table .moy{background:#0e2030;color:var(--accent-u);font-weight:600;border-left:2px solid var(--accent-u)}
+#batteries .mod-table thead th.moy{color:var(--accent-u)}
+
+/* Graphes */
+#batteries .chart-card{padding:14px 10px 6px}
+#batteries .chart-card .chart-title{font-size:12px;color:var(--txt-dim);font-family:var(--mono);padding:0 8px 8px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+#batteries .legend{display:flex;gap:12px;font-size:10px;color:var(--txt-faint)}
+#batteries .legend i{display:inline-block;width:16px;height:0;border-top-width:2px;border-top-style:dashed;vertical-align:middle;margin-right:4px}
+#batteries svg{display:block;width:100%;height:auto;font-family:var(--mono)}
+#batteries .gridline{stroke:var(--line-soft);stroke-width:1;stroke-dasharray:2 4}
+#batteries .modsep{stroke:var(--line);stroke-width:1;stroke-dasharray:1 3}
+#batteries .axis{stroke:var(--line);stroke-width:1.2}
+#batteries .tick-txt{fill:#e6eef5;font-size:10px}
+#batteries .xlabel{fill:#fff;font-size:9.5px;font-weight:600}
+#batteries .grouplabel{fill:var(--txt-faint);font-size:9px}
+#batteries .valtxt{fill:#b8c8d6;font-size:8px}
+#batteries .stem{stroke-width:2;stroke-linecap:round}
+#batteries .marker{stroke:#0c141d;stroke-width:1.4}
+#batteries .refline{stroke-width:1.4;stroke-dasharray:6 4;fill:none}
+#batteries .reftxt{font-size:10px;font-weight:600}
+
+/* Tableau disques */
+#batteries .disk-wrap{overflow-x:auto;padding:5px}
+#batteries .disk-table{border-collapse:collapse;width:100%;min-width:820px;font-family:var(--mono);font-size:11px}
+#batteries .disk-table th,#batteries .disk-table td{border:1px solid var(--line);padding:4px 7px;text-align:center;white-space:nowrap}
+#batteries .disk-table thead th{background:var(--card-2);color:var(--txt);font-weight:600}
+#batteries .disk-table tbody th{background:var(--card-2);color:var(--txt-dim);text-align:left;font-weight:500}
+#batteries .disk-table td{color:var(--txt)}
+#batteries .disk-table td.c-green,#batteries .disk-table td.c-blue,#batteries .disk-table td.c-red,
+#batteries .disk-table td.c-yellow,#batteries .disk-table td.c-grey,#batteries .disk-table td.c-minblue,
+#batteries .disk-table td.c-pink{color:#11202b;font-weight:600}
+#batteries .c-green{background:#8fbf4d} #batteries .c-blue{background:#5b9bd5} #batteries .c-red{background:#cf6b63}
+#batteries .c-yellow{background:#e8d566} #batteries .c-grey{background:#8090a0}
+#batteries .c-minblue{background:#a9c7e3} #batteries .c-pink{background:#e3a9a9}
+#batteries .disk-table tr.sep td,#batteries .disk-table tr.sep th{border-top:2px solid var(--line)}
+
+/* Zone alerte */
+#batteries .alert-zone{padding:14px 17px;display:flex;align-items:center;gap:12px;font-size:14px;font-weight:600}
+#batteries .alert-zone .ico{font-size:18px}
+#batteries .alert-zone.ok{background:#11241c;border-left:4px solid var(--ok);color:var(--ok)}
+#batteries .alert-zone.warn{background:#241f10;border-left:4px solid var(--warn);color:var(--warn)}
+#batteries .alert-zone.bad{background:#2a1318;border-left:4px solid var(--danger);color:var(--danger)}
+#batteries .alert-list{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500}
