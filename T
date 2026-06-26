@@ -1,0 +1,443 @@
+<!-- ══════════ CONFIGURATION ══════════ -->
+<section id="sequence" class="tab-content">
+  <div class="grid">
+
+    <div class="card span-12 card-motor-banner">
+      <div class="motor-banner-content">
+        <div class="motor-banner-title">
+          <span class="motor-banner-dot" id="configBannerDot"></span>
+          <div>
+            <h3>Configuration tir & mission</h3>
+            <p>Paramétrage LVA — Configuration à gauche, mission à droite</p>
+          </div>
+        </div>
+        <span class="status-pill warn" id="configStatusBadge">CONFIG</span>
+      </div>
+    </div>
+
+    <!-- CONFIGURATION TIR -->
+    <div class="card span-6 config-panel">
+      <div class="card-header">
+        <div>
+          <h3>Configuration tir</h3>
+          <p>STRUCT_MSG_CONFIGURATIONTIRLVA</p>
+        </div>
+      </div>
+
+      <div class="config-form">
+
+        <div class="config-field">
+          <label>Date réception CLOCK_MONOTONIC</label>
+          <input id="cfgDateMs" type="number" placeholder="uiDate_ms" />
+        </div>
+
+        <div class="config-field">
+          <label>Date UTC depuis 01/01/2000</label>
+          <input id="cfgDate2000Ms" type="number" placeholder="uiDate2000_ms" />
+        </div>
+
+        <div class="config-field">
+          <label>Type de tir</label>
+          <div class="config-checklist">
+            <label class="config-check">
+              <input type="radio" name="cfgTypeTir" value="0" checked />
+              <span></span>
+              TypeTir_Table — 0
+            </label>
+            <label class="config-check">
+              <input type="radio" name="cfgTypeTir" value="1" />
+              <span></span>
+              TypeTir_PetitPort
+            </label>
+            <label class="config-check">
+              <input type="radio" name="cfgTypeTir" value="2" />
+              <span></span>
+              TypeTir_Mer
+            </label>
+            <label class="config-check">
+              <input type="radio" name="cfgTypeTir" value="3" />
+              <span></span>
+              TypeTirSta_Statique
+            </label>
+            <label class="config-check">
+              <input type="radio" name="cfgTypeTir" value="4" />
+              <span></span>
+              TypeTirSta_Mer
+            </label>
+          </div>
+        </div>
+
+        <div class="config-field">
+          <label>Nom fichier mission</label>
+          <input id="cfgFileMission" type="text" maxlength="20" placeholder="cFileMission[20]" />
+        </div>
+
+        <div class="config-two-cols">
+          <div class="config-field">
+            <label>Délai sortie tube</label>
+            <input id="cfgTpsSortieTube" type="number" min="0" max="15" value="0" />
+            <small>Intervalle 0–15 s</small>
+          </div>
+
+          <div class="config-field">
+            <label>Délai ralliement immersion</label>
+            <input id="cfgTpsRallImm" type="number" min="0" max="60" value="0" />
+            <small>Intervalle 0–60 s</small>
+          </div>
+        </div>
+
+        <div class="config-two-cols">
+          <div class="config-field">
+            <label>Délai ralliement cap</label>
+            <input id="cfgTpsRallCap" type="number" min="0" max="60" value="0" />
+            <small>Intervalle 0–60 s</small>
+          </div>
+
+          <div class="config-field">
+            <label>Temps pour franchir mur</label>
+            <input id="cfgTpsMur" type="number" min="0" max="60" value="0" />
+            <small>Intervalle 0–60 s</small>
+          </div>
+        </div>
+
+        <div class="config-two-cols">
+          <div class="config-field">
+            <label>Immersion maximale autorisée</label>
+            <input id="cfgPlancher" type="number" placeholder="fPlancher" />
+          </div>
+
+          <div class="config-field">
+            <label>Immersion minimale autorisée</label>
+            <input id="cfgPlafond" type="number" placeholder="fPlafond" />
+          </div>
+        </div>
+
+        <div class="config-field">
+          <label>Distance porteur / mur</label>
+          <input id="cfgDistMur" type="number" min="70" max="200" value="70" />
+          <small>Intervalle 70–200 m</small>
+        </div>
+
+        <div class="config-two-cols">
+          <div class="config-field">
+            <label>Temps attente Scharte</label>
+            <input id="cfgTpsShdCarte" type="number" placeholder="uiTps_Shd_Carte" />
+          </div>
+
+          <div class="config-field">
+            <label>Durée tir max</label>
+            <input id="cfgTpsTir" type="number" placeholder="uiTpsTir" />
+          </div>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn-primary" id="sendConfigTirBtn">Envoyer configuration</button>
+          <button class="ghost-btn" id="resetConfigTirBtn">Réinitialiser</button>
+        </div>
+
+        <div class="motor-command-feedback" id="configTirFeedback">
+          Aucune configuration envoyée.
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MISSION -->
+    <div class="card span-6 config-panel">
+      <div class="card-header">
+        <div>
+          <h3>Mission</h3>
+          <p>STRUCT_MSG_MISSIONLVA</p>
+        </div>
+      </div>
+
+      <div class="config-form">
+
+        <div class="config-field">
+          <label>Date réception CLOCK_MONOTONIC</label>
+          <input id="missionDateMs" type="number" placeholder="uiDate_ms" />
+        </div>
+
+        <div class="config-field">
+          <label>Type de tir mission</label>
+          <div class="config-checklist">
+            <label class="config-check">
+              <input type="radio" name="missionTypeTir" value="0" checked />
+              <span></span>
+              TypeTir_Table — 0
+            </label>
+            <label class="config-check">
+              <input type="radio" name="missionTypeTir" value="1" />
+              <span></span>
+              TypeTir_PetitPort
+            </label>
+            <label class="config-check">
+              <input type="radio" name="missionTypeTir" value="2" />
+              <span></span>
+              TypeTir_Mer
+            </label>
+            <label class="config-check">
+              <input type="radio" name="missionTypeTir" value="3" />
+              <span></span>
+              TypeTirSta_Statique
+            </label>
+            <label class="config-check">
+              <input type="radio" name="missionTypeTir" value="4" />
+              <span></span>
+              TypeTirSta_Mer
+            </label>
+          </div>
+        </div>
+
+        <div class="config-field">
+          <label>Nom fichier mission</label>
+          <input id="missionFileName" type="text" maxlength="20" placeholder="cFileMission[20]" />
+        </div>
+
+        <div class="config-field">
+          <label>Contenu JSON mission</label>
+          <textarea id="missionJsonFile" rows="16" maxlength="1024" placeholder='cJsonFile[1024]'></textarea>
+          <small>Contenu du fichier mission à exécuter — max 1024 caractères</small>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn-primary" id="sendMissionBtn">Envoyer mission</button>
+          <button class="ghost-btn" id="resetMissionBtn">Réinitialiser</button>
+        </div>
+
+        <div class="motor-command-feedback" id="missionFeedback">
+          Aucune mission envoyée.
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CODES REQUÊTES -->
+    <div class="card span-12">
+      <div class="card-header">
+        <div>
+          <h3>Codes requêtes</h3>
+          <p>Identification message — byte 0 de la trame UDP</p>
+        </div>
+      </div>
+
+      <div class="config-code-grid">
+        <div class="config-code-row">
+          <span>MSG_IDENT_CONFSECU</span>
+          <strong>10</strong>
+        </div>
+        <div class="config-code-row">
+          <span>MSG_IDENT_CONFTIR</span>
+          <strong>20</strong>
+        </div>
+        <div class="config-code-row">
+          <span>MSG_IDENT_INFORMATION</span>
+          <strong>30</strong>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+
+/* ════════════════════════════════════════
+   CONFIGURATION TIR / MISSION
+════════════════════════════════════════ */
+
+.config-panel {
+  min-height: 100%;
+}
+
+.config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.config-two-cols {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.config-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.55px;
+}
+
+.config-field input,
+.config-field textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-bright);
+  background: var(--card-light);
+  color: var(--text);
+  font-size: 13px;
+  font-family: "Consolas", "Courier New", monospace;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.config-field textarea {
+  resize: vertical;
+  min-height: 260px;
+  line-height: 1.45;
+}
+
+.config-field input:focus,
+.config-field textarea:focus {
+  border-color: rgba(42,140,255,0.55);
+  box-shadow: 0 0 0 3px rgba(42,140,255,0.08);
+}
+
+.config-field small {
+  font-size: 10px;
+  color: var(--muted2);
+  font-family: "Consolas", "Courier New", monospace;
+}
+
+/* Checklist type de tir */
+.config-checklist {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(12, 34, 64, 0.45);
+}
+
+.config-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--card-light);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.config-check:hover {
+  border-color: var(--border-bright);
+  color: #a8c8f0;
+  background: var(--card-hover);
+}
+
+.config-check input {
+  display: none;
+}
+
+.config-check span {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border-bright);
+  flex-shrink: 0;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.config-check:has(input:checked) {
+  color: var(--blue);
+  background: rgba(42,140,255,0.10);
+  border-color: rgba(42,140,255,0.42);
+}
+
+.config-check:has(input:checked) span {
+  background: var(--blue);
+  border-color: var(--blue);
+  box-shadow: 0 0 8px rgba(42,140,255,0.45);
+}
+
+.config-check:has(input:checked) span::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 5px;
+  height: 8px;
+  border: 2px solid white;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+/* Actions */
+.config-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.config-actions .btn-primary,
+.config-actions .ghost-btn {
+  flex: 1;
+  text-align: center;
+  justify-content: center;
+}
+
+/* Codes requêtes */
+.config-code-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.config-code-row {
+  background: var(--card-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 13px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.config-code-row span {
+  color: var(--muted);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 12px;
+}
+
+.config-code-row strong {
+  color: var(--blue);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 17px;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .config-two-cols,
+  .config-code-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .config-actions {
+    flex-direction: column;
+  }
+
+  .config-actions .btn-primary,
+  .config-actions .ghost-btn {
+    width: 100%;
+  }
+}
