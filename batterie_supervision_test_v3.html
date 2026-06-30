@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Batteries — Supervision Test</title>
+<style>
+:root{--bg:#0c141d;--bg-grad:radial-gradient(1200px 600px at 80% -10%,#15222f 0%,#0c141d 60%);--card:#141f2b;--card-2:#101a24;--line:#22323f;--line-soft:#1a2832;--txt:#e6eef5;--txt-dim:#8aa0b2;--txt-faint:#5d7385;--accent-u:#36b6ff;--accent-t:#ff9e3d;--ok:#3ddc97;--warn:#ffb547;--danger:#ff5a6e;--grey:#5d7385;--font:'Segoe UI',system-ui,'DejaVu Sans',sans-serif;--mono:'Cascadia Code','DejaVu Sans Mono',Consolas,'Courier New',monospace}*{box-sizing:border-box;margin:0;padding:0}body{font-family:var(--font);background:var(--bg);background-image:var(--bg-grad);color:var(--txt);padding:18px;min-height:100vh}.tab-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}.tab-head h2{font-size:19px;font-weight:600}.tab-head p{color:var(--txt-dim);font-size:12px}.tab-head .src{font-family:var(--mono);font-size:10px;color:var(--txt-faint);background:#0a121a;border:1px solid var(--line);padding:3px 8px;border-radius:6px}.stack{display:flex;flex-direction:column;gap:13px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px -16px #000;overflow:hidden}.card-head{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-bottom:1px solid var(--line-soft)}.card-head .ttl{display:flex;align-items:center;gap:9px}.card-head h3{font-size:14px;font-weight:600}.card-head .sub{font-size:11px;color:var(--txt-faint);font-family:var(--mono)}.dot{width:9px;height:9px;border-radius:50%}.dot.u{background:var(--accent-u);box-shadow:0 0 10px var(--accent-u)}.dot.t{background:var(--accent-t);box-shadow:0 0 10px var(--accent-t)}.leds{display:flex;flex-wrap:wrap;gap:10px;padding:13px}.led-item{display:flex;align-items:center;gap:9px;background:var(--card-2);border:1px solid var(--line-soft);border-radius:9px;padding:9px 13px;flex:1;min-width:140px}.led{width:12px;height:12px;border-radius:50%;flex-shrink:0}.led.green{background:var(--ok);box-shadow:0 0 9px var(--ok)}.led.red{background:var(--danger);box-shadow:0 0 9px var(--danger)}.led.orange{background:var(--warn);box-shadow:0 0 9px var(--warn)}.led.grey{background:var(--grey)}.led-item .nm{font-weight:600;font-size:12px}.led-item .st{font-size:10px;color:var(--txt-dim);font-family:var(--mono)}.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:1px;background:var(--line-soft)}.kpi{background:var(--card-2);padding:11px 13px;display:flex;flex-direction:column;gap:5px}.kpi .lbl,.metric .lbl{font-size:10px;color:var(--txt-dim);text-transform:uppercase;letter-spacing:.6px}.kpi .v{font-family:var(--mono);font-size:17px;font-weight:600}.kpi .v small,.metric .val small{font-size:10px;color:var(--txt-dim);font-weight:400;margin-left:3px}.kpi .v.na{color:var(--txt-faint);font-style:italic;font-size:13px}.bat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}@media(max-width:980px){.bat-grid{grid-template-columns:1fr}}.col{display:flex;flex-direction:column;gap:13px}.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line-soft)}.metric{background:var(--card-2);padding:11px 13px;display:flex;flex-direction:column;gap:4px}.metric.full{grid-column:1/-1}.metric .val{font-family:var(--mono);font-size:18px;font-weight:600;line-height:1}.metric.accent-u .val{color:var(--accent-u)}.metric.accent-t .val{color:var(--accent-t)}.chart-card{padding:14px 10px 6px}.chart-card .chart-title{font-size:12px;color:var(--txt-dim);font-family:var(--mono);padding:0 8px 8px;display:flex;justify-content:space-between;align-items:center;gap:10px}.legend{display:flex;gap:12px;font-size:10px;color:var(--txt-faint)}.legend i{display:inline-block;width:16px;height:0;border-top-width:2px;border-top-style:dashed;vertical-align:middle;margin-right:4px}svg{display:block;width:100%;height:auto;font-family:var(--mono)}.gridline{stroke:var(--line-soft);stroke-width:1;stroke-dasharray:2 4}.axis{stroke:var(--line);stroke-width:1.2}.tick-txt{fill:#ffffff;font-size:10px}.marker{stroke:#0c141d;stroke-width:1.4}.stem{stroke-width:2;stroke-linecap:round}
+.hover-zone{fill:transparent;cursor:crosshair}.disk-wrap,.mod-wrap{overflow-x:auto;padding:5px}.disk-table,.mod-table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:11px}.disk-table{min-width:980px}.mod-table{min-width:520px}.disk-table th,.disk-table td,.mod-table th,.mod-table td{border:1px solid var(--line);padding:4px 7px;text-align:center;white-space:nowrap}.disk-table thead th,.mod-table thead th{background:var(--card-2);color:var(--txt);font-weight:600}.disk-table tbody th{background:var(--card-2);color:var(--txt-dim);text-align:left;font-weight:500}.mod-table tbody th{background:var(--card-2);color:var(--accent-u);text-align:left;font-weight:600}.disk-table td.c-green,.disk-table td.c-blue,.disk-table td.c-red,.disk-table td.c-yellow,.disk-table td.c-grey,.disk-table td.c-minblue,.disk-table td.c-pink{color:#11202b;font-weight:600}.c-green{background:#8fbf4d}.c-blue{background:#5b9bd5}.c-red{background:#cf6b63}.c-yellow{background:#e8d566}.c-grey{background:#8090a0}.c-minblue{background:#a9c7e3}.c-pink{background:#e3a9a9}.disk-table tr.sep td,.disk-table tr.sep th{border-top:2px solid var(--line)}.alert-zone{padding:14px 17px;display:flex;align-items:center;gap:12px;font-size:14px;font-weight:600}.alert-zone .ico{font-size:18px}.alert-zone.ok{background:#11241c;border-left:4px solid var(--ok);color:var(--ok)}.alert-zone.bad{background:#2a1318;border-left:4px solid var(--danger);color:var(--danger)}.alert-list{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500}.actions{display:flex;gap:8px;flex-wrap:wrap}button{border:1px solid var(--line);background:var(--card-2);color:var(--txt);padding:7px 11px;border-radius:8px;cursor:pointer}button:hover{border-color:var(--accent-u)}
+</style>
+</head>
+<body>
+<section class="tab-content stack">
+  <div class="tab-head"><div><h2>Batteries</h2><p>Supervision énergétique et thermique — simulation locale</p></div><div class="actions"><button onclick="renderBattery(BATTERY_TEST_JSON.batterie)">Recharger JSON simu</button><span class="src">HTML + CSS + JS · fichier unique</span></div></div>
+  <div class="card"><div class="card-head"><div class="ttl"><h3>État des communications</h3></div><span class="sub">batterie.status</span></div><div class="leds" id="ledBar"></div></div>
+  <div class="card"><div class="card-head"><div class="ttl"><h3>Mesures batterie</h3></div><span class="sub">batterie.etat</span></div><div class="kpis" id="kpiBar"></div></div>
+  <div class="bat-grid"><div class="col"><div class="card"><div class="card-head"><div class="ttl"><span class="dot t"></span><h3>Températures</h3></div><span class="sub">°C</span></div><div class="metrics"><div class="metric accent-t"><span class="lbl">T°C max</span><span class="val" id="tMax">– <small>°C</small></span></div><div class="metric accent-t"><span class="lbl">T°C min</span><span class="val" id="tMin">– <small>°C</small></span></div><div class="metric full"><span class="lbl">Δ T°C</span><span class="val" id="tDelta">– <small>°C</small></span></div></div></div><div class="card chart-card"><div class="chart-title"><span>Température / disque</span><span class="legend"><span><i style="border-color:var(--warn)"></i>75 °C</span><span><i style="border-color:var(--danger)"></i>80 °C</span></span></div><div id="chartTemp"></div></div></div><div class="col"><div class="card"><div class="card-head"><div class="ttl"><span class="dot u"></span><h3>Tensions éléments</h3></div><span class="sub">mV</span></div><div class="metrics"><div class="metric accent-u"><span class="lbl">Uel max</span><span class="val" id="uMax">– <small>mV</small></span></div><div class="metric accent-u"><span class="lbl">Uel min</span><span class="val" id="uMin">– <small>mV</small></span></div><div class="metric"><span class="lbl">Δ Uel</span><span class="val" id="uDelta">– <small>mV</small></span></div><div class="metric"><span class="lbl">Uel moyen</span><span class="val" id="uMoy">– <small>mV</small></span></div></div></div><div class="card chart-card"><div class="chart-title"><span>Tensions par élément : min / moy / max</span><span class="legend"><span><i style="border-color:var(--danger)"></i>4200 mV</span><span><i style="border-color:var(--warn)"></i>2500 mV</span></span></div><div id="chartTension"></div></div></div></div>
+  <div class="card"><div class="card-head"><div class="ttl"><h3>Tableau des disques</h3></div><span class="sub">tensions (mV) · températures (°C)</span></div><div class="disk-wrap" id="batTable"></div></div>
+  <div class="card"><div class="card-head"><div class="ttl"><h3>Modules BMS</h3></div><span class="sub">batterie.infoelt</span></div><div class="mod-wrap" id="modTable"></div></div>
+  <div class="card"><div id="alertZone" class="alert-zone ok"><span class="ico">✓</span><span>Aucune alerte</span></div></div>
+</section>
+<script>
+const BATTERY_TEST_JSON={type:"state",batterie:{status:{etatcommCyclable:1,etatcommIVT:1,etatcommLTC:1,etatcommDisques:1},etat:{courant:100,tension:100,tensioncharge:100},infoelt:{elt1tensionmin:4058,elt1tensionmax:4070,elt1tempmin:22,elt1tempmax:26,elt1bmsstate:1,elt2tensionmin:4056,elt2tensionmax:4072,elt2tempmin:23,elt2tempmax:27,elt2bmsstate:1,elt3tensionmin:3980,elt3tensionmax:4075,elt3tempmin:24,elt3tempmax:74,elt3bmsstate:2,elt4tensionmin:4060,elt4tensionmax:6553,elt4tempmin:22,elt4tempmax:74,elt4bmsstate:3,elt5tensionmin:4062,elt5tensionmax:6553,elt5tempmin:23,elt5tempmax:74,elt5bmsstate:3},tempelt:{elt1tempdisque1:22,elt1tempdisque2:23,elt2tempdisque1:22,elt2tempdisque2:24,elt3tempdisque1:25,elt3tempdisque2:74,elt4tempdisque1:23,elt4tempdisque2:74,elt5tempdisque1:24,elt5tempdisque2:74},tensionelt:{"Disque1.1":{elt1tension:4067,elt2tension:4067,elt3tension:4067,elt4tension:4068,elt5tension:4068,elt6tension:4068,elt7tension:4067,elt8tension:4067,elt9tension:4062,elt10tension:4062,elt11tension:4067,elt12tension:4067,elt13tension:4068,elt14tension:4067},"Disque1.2":{elt15tension:4068,elt16tension:4068,elt17tension:4064,elt18tension:4063,elt19tension:4063,elt20tension:4057,elt21tension:4067,elt22tension:4063,elt23tension:4063,elt24tension:4063,elt25tension:4067,elt26tension:4068,elt27tension:4067},"Disque2.1":{elt1tension:4066,elt2tension:4067,elt3tension:4067,elt4tension:4067,elt5tension:4067,elt6tension:4067,elt7tension:4067,elt8tension:4067,elt9tension:4062,elt10tension:4062,elt11tension:4066,elt12tension:4067,elt13tension:4068,elt14tension:4067},"Disque2.2":{elt15tension:4067,elt16tension:4067,elt17tension:4067,elt18tension:4063,elt19tension:4062,elt20tension:4056,elt21tension:4067,elt22tension:4062,elt23tension:4062,elt24tension:4062,elt25tension:4067,elt26tension:4068,elt27tension:4067},"Disque3.1":{elt1tension:993,elt2tension:1144,elt3tension:1177,elt4tension:862,elt5tension:1137,elt6tension:573,elt7tension:474,elt8tension:810,elt9tension:268,elt10tension:440,elt11tension:1084,elt12tension:824,elt13tension:1098,elt14tension:964},"Disque3.2":{elt15tension:4068,elt16tension:4067,elt17tension:4063,elt18tension:4063,elt19tension:4062,elt20tension:4057,elt21tension:4067,elt22tension:4062,elt23tension:4062,elt24tension:4062,elt25tension:4067,elt26tension:4067,elt27tension:4067},"Disque4.1":{elt1tension:6553,elt2tension:6553,elt3tension:6553,elt4tension:6553,elt5tension:6553,elt6tension:6553,elt7tension:6553,elt8tension:6553,elt9tension:6553,elt10tension:6553,elt11tension:6553,elt12tension:6553,elt13tension:6553,elt14tension:6553},"Disque4.2":{elt15tension:6553,elt16tension:6553,elt17tension:6553,elt18tension:6553,elt19tension:6553,elt20tension:6553,elt21tension:6553,elt22tension:6553,elt23tension:6553,elt24tension:6553,elt25tension:6553,elt26tension:6553,elt27tension:0},"Disque5.1":{elt1tension:6553,elt2tension:6553,elt3tension:6553,elt4tension:6553,elt5tension:6553,elt6tension:6553,elt7tension:6553,elt8tension:6553,elt9tension:6553,elt10tension:6553,elt11tension:6553,elt12tension:6553,elt13tension:6553,elt14tension:6553},"Disque5.2":{elt15tension:6553,elt16tension:6553,elt17tension:6553,elt18tension:6553,elt19tension:6553,elt20tension:6553,elt21tension:6553,elt22tension:6553,elt23tension:6553,elt24tension:6553,elt25tension:6553,elt26tension:6553,elt27tension:0}},elements:[{name:"Uel1 / Uel15",min:993,moy:4713,max:6553},{name:"Uel2 / Uel16",min:1144,moy:4728,max:6553},{name:"Uel3 / Uel17",min:1177,moy:4715,max:6553},{name:"Uel4 / Uel18",min:862,moy:4684,max:6553},{name:"Uel5 / Uel19",min:1137,moy:4703,max:6553},{name:"Uel6 / Uel20",min:573,moy:4650,max:6553},{name:"Uel7 / Uel21",min:474,moy:4644,max:6553},{name:"Uel8 / Uel22",min:810,moy:4663,max:6553},{name:"Uel9 / Uel23",min:268,moy:4604,max:6553},{name:"Uel10 / Uel24",min:440,moy:4620,max:6553},{name:"Uel11 / Uel25",min:1084,moy:4707,max:6553},{name:"Uel12 / Uel26",min:824,moy:4684,max:6553},{name:"Uel13 / Uel27",min:1098,moy:4707,max:6553},{name:"Uel14",min:964,moy:4693,max:6553}],MoyenDisque1:{tensionMin:4057,tensionMax:4068,tensionMoyen:4065,Delta:11},MoyenDisque2:{tensionMin:4056,tensionMax:4068,tensionMoyen:4065,Delta:12},MoyenDisque3:{tensionMin:268,tensionMax:4068,tensionMoyen:2395,Delta:3800},MoyenDisque4:{tensionMin:6553,tensionMax:6553,tensionMoyen:6553,Delta:0},MoyenDisque5:{tensionMin:6553,tensionMax:6553,tensionMoyen:6553,Delta:0}}};
+let BAT_STATE={comm:{},mesures:{},modules:[],temperatures:[],disques:[],elements:[],moyens:[]};
+function renderBattery(batterie){if(!batterie)return;batteryUpdateState(batterie);batteryRenderLeds();batteryRenderKpis();batteryRenderMetrics();batteryRenderModules();batteryRenderDiskTable();batteryRenderCharts();batteryRenderAlerts()}
+function batteryUpdateState(batterie){const status=batterie.status||{},etat=batterie.etat||{},infoelt=batterie.infoelt||{},tempelt=batterie.tempelt||{},tensionelt=batterie.tensionelt||{};BAT_STATE.comm={cyclable:batteryNum(status.etatcommCyclable)??0,ivt:batteryNum(status.etatcommIVT)??0,ltc:batteryNum(status.etatcommLTC)??0,disques:batteryNum(status.etatcommDisques)??0};BAT_STATE.mesures={courant:batteryNum(etat.courant),tension:batteryNum(etat.tension),tensionCharge:batteryNum(etat.tensioncharge),puissance:null};if(BAT_STATE.mesures.courant!==null&&BAT_STATE.mesures.tension!==null)BAT_STATE.mesures.puissance=(BAT_STATE.mesures.courant*BAT_STATE.mesures.tension)/1000;BAT_STATE.modules=[];for(let i=1;i<=5;i++)BAT_STATE.modules.push({name:`Module ${i}`,uMin:batteryNum(infoelt[`elt${i}tensionmin`]),uMax:batteryNum(infoelt[`elt${i}tensionmax`]),tMin:batteryNum(infoelt[`elt${i}tempmin`]),tMax:batteryNum(infoelt[`elt${i}tempmax`]),bms:batteryNum(infoelt[`elt${i}bmsstate`])});BAT_STATE.temperatures=[];for(let i=1;i<=5;i++){BAT_STATE.temperatures.push({name:`${i}.1`,value:batteryNum(tempelt[`elt${i}tempdisque1`])});BAT_STATE.temperatures.push({name:`${i}.2`,value:batteryNum(tempelt[`elt${i}tempdisque2`])})}BAT_STATE.moyens=[];for(let i=1;i<=5;i++){const m=batterie[`MoyenDisque${i}`]||{};BAT_STATE.moyens.push({name:`${i}`,tensionMin:batteryNum(m.tensionMin),tensionMax:batteryNum(m.tensionMax),tensionMoyen:batteryNum(m.tensionMoyen),delta:batteryNum(m.Delta)})}BAT_STATE.disques=[];for(let i=1;i<=5;i++){const d1=tensionelt[`Disque${i}.1`]||{},d2=tensionelt[`Disque${i}.2`]||{},moyen=BAT_STATE.moyens[i-1]||{};BAT_STATE.disques.push({name:`${i}.1`,cells:batteryExtractCells(d1,1,14),temp:batteryNum(tempelt[`elt${i}tempdisque1`]),stats:moyen});BAT_STATE.disques.push({name:`${i}.2`,cells:batteryExtractCells(d2,15,27).concat([null]),temp:batteryNum(tempelt[`elt${i}tempdisque2`]),stats:moyen})}BAT_STATE.elements=Array.isArray(batterie.elements)?batterie.elements:[]}
+function batteryExtractCells(obj,start,end){const cells=[];for(let i=start;i<=end;i++)cells.push(batteryNum(obj[`elt${i}tension`]));return cells}
+function batteryRenderLeds(){const ledBar=document.getElementById("ledBar");if(!ledBar)return;const items=[{name:"LTC",code:BAT_STATE.comm.ltc},{name:"IVT",code:BAT_STATE.comm.ivt},{name:"BANC CYCLAGE",code:BAT_STATE.comm.cyclable},{name:"DISQUES",code:BAT_STATE.comm.disques}];ledBar.innerHTML=items.map(item=>{const cls=batteryCommClass(item.code);return `<div class="led-item"><span class="led ${cls}"></span><div><div class="nm">${item.name}</div><div class="st">${batteryCommText(cls)}</div></div></div>`}).join("")}
+function batteryRenderKpis(){const kpiBar=document.getElementById("kpiBar");if(!kpiBar)return;const m=BAT_STATE.mesures,rows=[["U Batt",m.tension,"V"],["I Mesuré",m.courant,"A"],["U Charge",m.tensionCharge,"V"],["Puissance",m.puissance,"kW"],["U Décharge",null,"V"],["Capacité",null,"Ah"],["Énergie",null,"kWh"]];kpiBar.innerHTML=rows.map(([label,value,unit])=>`<div class="kpi"><span class="lbl">${label}</span>${batteryFormatValue(value,unit,2)}</div>`).join("")}
+function batteryRenderMetrics(){const allCells=BAT_STATE.disques.flatMap(d=>d.cells).filter(v=>v!==null&&v!==0),temps=BAT_STATE.temperatures.map(t=>t.value).filter(v=>v!==null);if(allCells.length){const min=Math.min(...allCells),max=Math.max(...allCells),moy=allCells.reduce((a,b)=>a+b,0)/allCells.length;setHtml("uMin",`${min.toFixed(0)} <small>mV</small>`);setHtml("uMax",`${max.toFixed(0)} <small>mV</small>`);setHtml("uDelta",`${(max-min).toFixed(0)} <small>mV</small>`);setHtml("uMoy",`${moy.toFixed(0)} <small>mV</small>`)}if(temps.length){const min=Math.min(...temps),max=Math.max(...temps);setHtml("tMin",`${min.toFixed(0)} <small>°C</small>`);setHtml("tMax",`${max.toFixed(0)} <small>°C</small>`);setHtml("tDelta",`${(max-min).toFixed(0)} <small>°C</small>`)}}
+function batteryRenderModules(){const modTable=document.getElementById("modTable");if(!modTable)return;const M=BAT_STATE.modules,head=`<tr><th></th>${M.map(m=>`<th>${m.name}</th>`).join("")}</tr>`,row=(label,key,unit="")=>`<tr><th>${label}</th>${M.map(m=>`<td>${batteryCell(m[key],unit)}</td>`).join("")}</tr>`;modTable.innerHTML=`<table class="mod-table"><thead>${head}</thead><tbody>${row("Uel min","uMin","mV")}${row("Uel max","uMax","mV")}${row("T°C min","tMin","°C")}${row("T°C max","tMax","°C")}${row("BMS state","bms","")}</tbody></table>`}
+function batteryRenderDiskTable(){const batTable=document.getElementById("batTable");if(!batTable)return;const D=BAT_STATE.disques;let rows="";for(let r=0;r<14;r++){const label=r<13?`Uel${r+1} / Uel${r+15}`:"Uel14";rows+=`<tr><th>${label}</th>${D.map(d=>{const value=d.cells[r];return `<td class="${batteryClassTensionMv(value)}">${value??""}</td>`}).join("")}</tr>`}rows+=`<tr class="sep"><th>UelMin / UelMax</th>${D.map(d=>`<td class="c-minblue">${d.stats?.tensionMin??"–"} / ${d.stats?.tensionMax??"–"}</td>`).join("")}</tr><tr><th>UelMoy / Delta</th>${D.map(d=>`<td class="c-yellow">${d.stats?.tensionMoyen??"–"} / ${d.stats?.delta??"–"}</td>`).join("")}</tr><tr class="sep"><th>T°C 1/2</th>${D.map(d=>`<td>${batteryCell(d.temp,"°C")}</td>`).join("")}</tr>`;const head=`<tr><th></th>${D.map(d=>`<th>Disque ${d.name}</th>`).join("")}</tr>`;batTable.innerHTML=`<table class="disk-table"><thead>${head}</thead><tbody>${rows}</tbody></table>`}
+function batteryRenderCharts() {
+  batteryRenderTensionElementsChart();
+  batteryRenderTempChart();
+}
+
+/* Graphe tension :
+   - 14 groupes en X : Uel1/Uel15 ... Uel14
+   - 3 barres par groupe : min / moy / max
+   - lignes seuils : 2500 mV et 4200 mV
+*/
+function batteryRenderTensionElementsChart() {
+  const target = document.getElementById("chartTension");
+  if (!target) return;
+
+  const groups = BAT_STATE.elements.map(e => ({
+    label: e.name,
+    min: batteryNum(e.min),
+    moy: batteryNum(e.moy),
+    max: batteryNum(e.max)
+  }));
+
+  renderGroupedTensionSvg(target, groups);
+}
+
+/* Graphe température :
+   - 10 points en X : 1.1, 1.2, 2.1, 2.2...
+   - lignes seuils : 75 °C et 80 °C
+*/
+function batteryRenderTempChart() {
+  const target = document.getElementById("chartTemp");
+  if (!target) return;
+
+  const points = BAT_STATE.temperatures
+    .filter(t => t.value !== null && t.value !== undefined)
+    .map(t => ({
+      label: t.name,
+      value: t.value
+    }));
+
+  renderTempSvg(target, points);
+}
+
+function renderGroupedTensionSvg(target, groups) {
+  groups = groups.filter(g => g.min !== null || g.moy !== null || g.max !== null);
+
+  if (!groups.length) {
+    target.innerHTML = `<p style="padding:12px;color:var(--txt-dim)">Aucune donnée</p>`;
+    return;
+  }
+
+  const W = 560;
+  const H = 300;
+  const M = { top: 24, right: 58, bottom: 62, left: 45 };
+  const iw = W - M.left - M.right;
+  const ih = H - M.top - M.bottom;
+
+  const yMin = 0;
+  const yMax = 7000;
+
+  const xGroup = i => M.left + iw * ((i + 0.5) / groups.length);
+  const groupW = iw / groups.length;
+  const barW = Math.max(2.6, Math.min(5.2, groupW / 6));
+  const y = v => M.top + ih * (1 - (v - yMin) / (yMax - yMin));
+
+  const series = [
+    { key: "min", label: "Min", color: "var(--accent-u)", dx: -barW * 1.25 },
+    { key: "moy", label: "Moy", color: "var(--ok)", dx: 0 },
+    { key: "max", label: "Max", color: "var(--danger)", dx: barW * 1.25 }
+  ];
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+
+  // Grille + axe Y
+  for (let k = 0; k <= 7; k++) {
+    const val = yMin + ((yMax - yMin) * k / 7);
+    const yy = y(val);
+    svg += `
+      <line class="gridline" x1="${M.left}" x2="${W - M.right}" y1="${yy}" y2="${yy}" />
+      <text class="tick-txt" x="${M.left - 7}" y="${yy + 3}" text-anchor="end">${val.toFixed(0)}</text>
+    `;
+  }
+
+  svg += `
+    <line class="axis" x1="${M.left}" y1="${M.top}" x2="${M.left}" y2="${M.top + ih}" />
+    <line class="axis" x1="${M.left}" y1="${M.top + ih}" x2="${W - M.right}" y2="${M.top + ih}" />
+  `;
+
+  // Lignes seuils tension
+  [
+    { value: 4200, label: "4200 mV", color: "var(--danger)" },
+    { value: 2500, label: "2500 mV", color: "var(--warn)" }
+  ].forEach(s => {
+    const yy = y(s.value);
+    svg += `
+      <line class="refline" stroke="${s.color}" x1="${M.left}" x2="${W - M.right}" y1="${yy}" y2="${yy}" />
+      <text class="reftxt" fill="${s.color}" x="${W - M.right + 5}" y="${yy + 3}">${s.label}</text>
+    `;
+  });
+
+  // Barres groupées
+  groups.forEach((g, i) => {
+    const cx = xGroup(i);
+
+    series.forEach(s => {
+      const v = g[s.key];
+      if (v === null || v === undefined) return;
+
+      const xx = cx + s.dx - barW / 2;
+      const yy = y(v);
+      const h = M.top + ih - yy;
+
+      svg += `
+        <rect x="${xx}" y="${yy}" width="${barW}" height="${Math.max(h, 1)}" rx="2" fill="${s.color}">
+          <title>${g.label} — ${s.label} : ${v} mV</title>
+        </rect>
+      `;
+    });
+
+    // Nom de l'élément en abscisse
+    svg += `
+      <rect class="hover-zone" x="${cx - groupW / 2}" y="${M.top}" width="${groupW}" height="${ih}">
+        <title>${g.label} — Min : ${g.min ?? "n/d"} mV | Moy : ${g.moy ?? "n/d"} mV | Max : ${g.max ?? "n/d"} mV</title>
+      </rect>
+      <text class="xlabel small" x="${cx}" y="${M.top + ih + 14}" text-anchor="end" transform="rotate(-55 ${cx} ${M.top + ih + 14})">${g.label}</text>
+    `;
+  });
+
+  // Mini légende dans le SVG
+  let lx = M.left;
+  series.forEach(s => {
+    svg += `
+      <rect x="${lx}" y="6" width="8" height="8" rx="2" fill="${s.color}" />
+      <text class="series-label" x="${lx + 12}" y="13">${s.label}</text>
+    `;
+    lx += 52;
+  });
+
+  svg += `</svg>`;
+  target.innerHTML = svg;
+}
+
+function renderTempSvg(target, points) {
+  if (!points.length) {
+    target.innerHTML = `<p style="padding:12px;color:var(--txt-dim)">Aucune donnée</p>`;
+    return;
+  }
+
+  const W = 560;
+  const H = 300;
+  const M = { top: 24, right: 58, bottom: 54, left: 45 };
+  const iw = W - M.left - M.right;
+  const ih = H - M.top - M.bottom;
+
+  const yMin = 0;
+  const yMax = 85;
+
+  const x = i => M.left + iw * ((i + 0.5) / points.length);
+  const y = v => M.top + ih * (1 - (v - yMin) / (yMax - yMin));
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+
+  // Grille + axe Y
+  for (let k = 0; k <= 5; k++) {
+    const val = yMin + ((yMax - yMin) * k / 5);
+    const yy = y(val);
+    svg += `
+      <line class="gridline" x1="${M.left}" x2="${W - M.right}" y1="${yy}" y2="${yy}" />
+      <text class="tick-txt" x="${M.left - 6}" y="${yy + 3}" text-anchor="end">${val.toFixed(0)}</text>
+    `;
+  }
+
+  svg += `
+    <line class="axis" x1="${M.left}" y1="${M.top}" x2="${M.left}" y2="${M.top + ih}" />
+    <line class="axis" x1="${M.left}" y1="${M.top + ih}" x2="${W - M.right}" y2="${M.top + ih}" />
+  `;
+
+  // Lignes seuils température
+  [
+    { value: 75, label: "75 °C", color: "var(--warn)" },
+    { value: 80, label: "80 °C", color: "var(--danger)" }
+  ].forEach(s => {
+    const yy = y(s.value);
+    svg += `
+      <line class="refline" stroke="${s.color}" x1="${M.left}" x2="${W - M.right}" y1="${yy}" y2="${yy}" />
+      <text class="reftxt" fill="${s.color}" x="${W - M.right + 5}" y="${yy + 3}">${s.label}</text>
+    `;
+  });
+
+  // Points / bâtons température
+  points.forEach((p, i) => {
+    const xx = x(i);
+    const yy = y(p.value);
+    const color = colorTemp(p.value);
+
+    svg += `
+      <line class="stem" stroke="${color}" x1="${xx}" y1="${M.top + ih}" x2="${xx}" y2="${yy}" />
+      <circle class="marker" fill="${color}" cx="${xx}" cy="${yy}" r="4">
+        <title>Disque ${p.label} : ${p.value} °C</title>
+      </circle>
+      <rect class="hover-zone" x="${xx - 10}" y="${M.top}" width="20" height="${ih}">
+        <title>Disque ${p.label} : ${p.value} °C</title>
+      </rect>
+      <text class="xlabel" x="${xx}" y="${M.top + ih + 18}" text-anchor="middle">${p.label}</text>
+      <text class="xlabel" x="${xx}" y="${yy - 8}" text-anchor="middle">${p.value}</text>
+    `;
+  });
+
+  svg += `</svg>`;
+  target.innerHTML = svg;
+}
+
+function batteryRenderAlerts(){const zone=document.getElementById("alertZone");if(!zone)return;const alerts=[];BAT_STATE.disques.forEach(d=>d.cells.forEach((v,i)=>{if(v>4200)alerts.push(`Surtension ${d.name} cellule ${i+1} : ${v} mV`);if(v!==null&&v!==0&&v<2500)alerts.push(`Sous-tension ${d.name} cellule ${i+1} : ${v} mV`)}));BAT_STATE.temperatures.forEach(t=>{if(t.value>75)alerts.push(`Température élevée disque ${t.name} : ${t.value} °C`)});if(!alerts.length){zone.className="alert-zone ok";zone.innerHTML=`<span class="ico">✓</span><span>Aucune alerte</span>`;return}zone.className="alert-zone bad";zone.innerHTML=`<span class="ico">⚠</span><div class="alert-list">${alerts.map(a=>`<span>${a}</span>`).join("")}</div>`}
+function batteryNum(v){if(v===undefined||v===null||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}function batteryFormatValue(value,unit,dec=2){if(value===null||value===undefined||!Number.isFinite(Number(value)))return `<span class="v na">n/d</span>`;return `<span class="v">${Number(value).toFixed(dec)}<small>${unit}</small></span>`}function batteryCell(value,unit=""){if(value===null||value===undefined||!Number.isFinite(Number(value)))return "–";return `${Number(value).toFixed(0)} ${unit}`}function setHtml(id,html){const el=document.getElementById(id);if(el)el.innerHTML=html}function batteryCommClass(code){if(code===1)return"green";if(code===2)return"orange";if(code===3)return"red";return"grey"}function batteryCommText(cls){if(cls==="green")return"Valide";if(cls==="orange")return"Dégradée";if(cls==="red")return"Perdue";return"Non démarré"}function batteryClassTensionMv(v){if(v===null||v===undefined||v===0)return"c-grey";if(v<2500)return"c-blue";if(v>4200)return"c-red";if(v>4100)return"c-yellow";return"c-green"}function colorTensionMv(v){if(v>4200||v<2500)return"var(--danger)";if(v>4100)return"var(--warn)";return"var(--ok)"}function colorTemp(v){if(v>75)return"var(--danger)";if(v>60)return"var(--warn)";return"var(--ok)"}
+renderBattery(BATTERY_TEST_JSON.batterie);
+</script>
+</body>
+</html>
