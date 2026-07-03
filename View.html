@@ -362,6 +362,123 @@ if (generateMissionJsonBtn) {
 }
 
 
+/* ==============================
+   ENVOI CONFIGURATION TIR
+============================== */
+
+const sendConfigTirBtn = document.getElementById("sendConfigTirBtn");
+const resetConfigTirBtn = document.getElementById("resetConfigTirBtn");
+
+if (sendConfigTirBtn) {
+    sendConfigTirBtn.addEventListener("click", () => {
+
+        const msg = {
+            cmd: "configuration_tir",
+            ident: 10,
+            configuration: {
+                uiDate_ms: Number(document.getElementById("cfgDateMs").value || 0),
+                uiDate2000_ms: Number(document.getElementById("cfgDate2000Ms").value || 0),
+                uiTypeTir: Number(document.getElementById("cfgTypeTir").value || 0),
+                cFileMission: document.getElementById("cfgFileMission").value || "",
+
+                uiTps_SortieTube: Number(document.getElementById("cfgTpsSortieTube").value || 0),
+                uiTps_Rall_Imm: Number(document.getElementById("cfgTpsRallImm").value || 0),
+                uiTps_Rall_Cap: Number(document.getElementById("cfgTpsRallCap").value || 0),
+
+                fPlancher: Number(document.getElementById("cfgPlancher").value || 0),
+                fPlafond: Number(document.getElementById("cfgPlafond").value || 0),
+
+                uiTps_Mur: Number(document.getElementById("cfgTpsMur").value || 0),
+                uiDist_Mur: Number(document.getElementById("cfgDistMur").value || 70),
+
+                uiTps_Shd_Carte: Number(document.getElementById("cfgTpsshdCarte").value || 0),
+                uiTpsTir: Number(document.getElementById("cfgTpsTir").value || 0)
+            }
+        };
+
+        if (!sendWS(msg)) return;
+
+        document.getElementById("configTirFeedback").textContent =
+            "Configuration tir envoyée.";
+
+        console.log("[CONFIGURATION_TIR TX]", msg);
+    });
+}
+
+if (resetConfigTirBtn) {
+    resetConfigTirBtn.addEventListener("click", () => {
+        document.getElementById("cfgDateMs").value = "";
+        document.getElementById("cfgDate2000Ms").value = "";
+        document.getElementById("cfgTypeTir").value = "0";
+        document.getElementById("cfgFileMission").value = "";
+
+        document.getElementById("cfgTpsSortieTube").value = 0;
+        document.getElementById("cfgTpsRallImm").value = 0;
+        document.getElementById("cfgTpsRallCap").value = 0;
+        document.getElementById("cfgTpsMur").value = 0;
+        document.getElementById("cfgDistMur").value = 70;
+
+        document.getElementById("cfgPlancher").value = "";
+        document.getElementById("cfgPlafond").value = "";
+        document.getElementById("cfgTpsshdCarte").value = "";
+        document.getElementById("cfgTpsTir").value = "";
+
+        document.getElementById("configTirFeedback").textContent =
+            "Configuration réinitialisée.";
+    });
+}
+
+
+/* ==============================
+   ENVOI MISSION
+============================== */
+
+const sendMissionBtn = document.getElementById("sendMissionBtn");
+const resetMissionBtn = document.getElementById("resetMissionBtn");
+
+if (sendMissionBtn) {
+    sendMissionBtn.addEventListener("click", () => {
+
+        const msg = {
+            cmd: "mission",
+            ident: 20,
+            mission: {
+                uiDate_ms: Number(document.getElementById("missionDateMs").value || 0),
+                uiTypeTir: Number(document.getElementById("missionTypeTir").value || 0),
+                cFileMission: document.getElementById("missionFileName").value || "",
+                missionNbMessageMax: Number(document.getElementById("missionNbMsgMax").value || 0),
+                cJsonFile: document.getElementById("missionJsonFile").value || ""
+            }
+        };
+
+        if (!sendWS(msg)) return;
+
+        document.getElementById("missionFeedback").textContent =
+            "Mission envoyée.";
+
+        console.log("[MISSION TX]", msg);
+    });
+}
+
+if (resetMissionBtn) {
+    resetMissionBtn.addEventListener("click", () => {
+        document.getElementById("missionDateMs").value = "";
+        document.getElementById("missionTypeTir").value = "0";
+        document.getElementById("missionFileName").value = "";
+        document.getElementById("missionNbMsgMax").value = 0;
+        document.getElementById("missionJsonFile").value = "";
+
+        const missionTableBody = document.getElementById("missionTableBody");
+        if (missionTableBody) {
+            missionTableBody.innerHTML = "";
+        }
+
+        document.getElementById("missionFeedback").textContent =
+            "Mission réinitialisée.";
+    });
+}
+      
+
       
       
 
