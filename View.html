@@ -321,7 +321,48 @@ missionNbMsgBtn.addEventListener("click", () => {
 
 });
 
+const generateMissionJsonBtn = document.getElementById("generateMissionJsonBtn");
+const missionJsonFile = document.getElementById("missionJsonFile");
 
+if (generateMissionJsonBtn) {
+    generateMissionJsonBtn.addEventListener("click", () => {
+
+        const rows = [];
+
+        document.querySelectorAll("#missionTableBody tr").forEach(tr => {
+            rows.push({
+                id: Number(tr.querySelector(".m-id").value || 0),
+                type: Number(tr.querySelector(".m-type").value || 0),
+                duree_sec: Number(tr.querySelector(".m-duree").value || 0),
+                mode: Number(tr.querySelector(".m-mode").value || 0),
+                psi_deg: Number(tr.querySelector(".m-psi").value || 0),
+                immersion: Number(tr.querySelector(".m-immersion").value || 0),
+                phi_deg: Number(tr.querySelector(".m-phi").value || 0),
+                theta: Number(tr.querySelector(".m-theta").value || 0),
+                spdl_x_kt: Number(tr.querySelector(".m-spdlx").value || 0),
+                psiPt: Number(tr.querySelector(".m-psipt").value || 0),
+                rampe: Number(tr.querySelector(".m-rampe").value || 0)
+            });
+        });
+
+        const missionJson = {
+            missionNbMessageMax: Number(document.getElementById("missionNbMsgMax").value || 0),
+            manoeuvres: rows
+        };
+
+        missionJsonFile.value = JSON.stringify(missionJson, null, 2);
+
+        const feedback = document.getElementById("missionFeedback");
+        if (feedback) {
+            feedback.textContent = "JSON mission généré depuis le tableau.";
+        }
+
+        console.log("[MISSION JSON]", missionJson);
+    });
+}
+
+
+      
       
 
 
