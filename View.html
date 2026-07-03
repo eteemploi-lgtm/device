@@ -225,6 +225,57 @@ if (generateMissionJsonBtn) {
 }
 
 
+const missionNbMsgMax = document.getElementById("missionNbMsgMax");
+const missionTableBody = document.getElementById("missionTableBody");
+
+function buildMissionRows(count) {
+    if (!missionTableBody) {
+        console.error("missionTableBody introuvable");
+        return;
+    }
+
+    missionTableBody.innerHTML = "";
+
+    count = Math.max(0, Math.min(150, Number(count) || 0));
+
+    for (let i = 0; i < count; i++) {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td><input type="number" class="m-id" value="${i}"></td>
+            <td><input type="number" class="m-type" value="1"></td>
+            <td><input type="number" class="m-duree" value="0"></td>
+            <td><input type="number" class="m-mode" value="0"></td>
+            <td><input type="number" class="m-psi" value="0"></td>
+            <td><input type="number" class="m-immersion" value="0"></td>
+            <td><input type="number" class="m-phi" value="0"></td>
+            <td><input type="number" class="m-theta" value="0"></td>
+            <td><input type="number" class="m-spdlx" value="0"></td>
+            <td><input type="number" class="m-psipt" value="0"></td>
+            <td><input type="number" class="m-rampe" value="0"></td>
+        `;
+
+        missionTableBody.appendChild(tr);
+    }
+}
+
+if (missionNbMsgMax) {
+    missionNbMsgMax.addEventListener("input", () => {
+        console.log("Nb mission =", missionNbMsgMax.value);
+        buildMissionRows(missionNbMsgMax.value);
+    });
+
+    missionNbMsgMax.addEventListener("change", () => {
+        buildMissionRows(missionNbMsgMax.value);
+    });
+} else {
+    console.error("missionNbMsgMax introuvable");
+}
+
+
+
+      
+
 
       
 
