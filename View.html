@@ -1,0 +1,231 @@
+<section id="configuration" class="tab-content">
+  <div class="grid">
+    <div class="card span-12 card-motor-banner">
+      <div class="motor-banner-content">
+        <div class="motor-banner-title">
+          <span class="motor-banner-dot"></span>
+          <div>
+            <h3>Configuration tir</h3>
+            <p>STRUCT_MSG_CONFIGURATIONTIRLVA</p>
+          </div>
+        </div>
+        <span class="status-pill warn">CONFIG</span>
+      </div>
+    </div>
+
+    <div class="card span-12 config-panel">
+      <!-- garde ici tous tes champs actuels de configuration tir -->
+
+      <div class="config-actions">
+        <button class="btn-primary" id="sendConfigTirBtn">Envoyer configuration</button>
+        <button class="ghost-btn" id="resetConfigTirBtn">Réinitialiser</button>
+        <button class="btn-primary" id="startConfigTirBtn">Start</button>
+      </div>
+
+      <div class="motor-command-feedback" id="configTirFeedback">
+        Aucune configuration envoyée.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+
+<section id="mission" class="tab-content">
+  <div class="grid">
+
+    <div class="card span-12 card-motor-banner">
+      <div class="motor-banner-content">
+        <div class="motor-banner-title">
+          <span class="motor-banner-dot"></span>
+          <div>
+            <h3>Mission</h3>
+            <p>STRUCT_MSG_MISSIONLVA — génération JSON depuis tableau</p>
+          </div>
+        </div>
+        <span class="status-pill warn">MISSION</span>
+      </div>
+    </div>
+
+    <div class="card span-12 config-panel">
+      <div class="config-form">
+
+        <div class="config-two-cols">
+          <div class="config-field">
+            <label>Date réception CLOCK_MONOTONIC</label>
+            <input id="missionDateMs" type="number" placeholder="uiDate_ms">
+          </div>
+
+          <div class="config-field">
+            <label>Type de tir</label>
+            <select id="missionTypeTir">
+              <option value="0">TypeTir_Table — 0</option>
+              <option value="1">TypeTir_PetitPort</option>
+              <option value="2">TypeTir_Mer</option>
+              <option value="3">TypeTirSta_Statique</option>
+              <option value="4">TypeTirSta_Mer</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="config-two-cols">
+          <div class="config-field">
+            <label>Nom fichier mission</label>
+            <input id="missionFileName" type="text" maxlength="20" placeholder="cFileMission[20]">
+          </div>
+
+          <div class="config-field">
+            <label>Mission nb message max</label>
+            <input id="missionNbMsgMax" type="number" min="0" max="150" value="0">
+            <small>Intervalle 0–150</small>
+          </div>
+        </div>
+
+        <div class="mission-table-wrap">
+          <table class="table mission-table">
+            <thead>
+              <tr>
+                <th>Id</th>
+                <th>Type</th>
+                <th>Durée (sec)</th>
+                <th>Mode</th>
+                <th>Psi (deg)</th>
+                <th>Immersion</th>
+                <th>Phi (deg)</th>
+                <th>Theta</th>
+                <th>Spdl_x (kt)</th>
+                <th>PsiPt</th>
+                <th>Rampe</th>
+              </tr>
+            </thead>
+            <tbody id="missionTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="config-field">
+          <label>Contenu JSON mission</label>
+          <textarea id="missionJsonFile" rows="16" maxlength="1024" placeholder="JSON mission généré depuis le tableau"></textarea>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn-primary" id="generateMissionJsonBtn">Générer JSON</button>
+          <button class="btn-primary" id="sendMissionBtn">Envoyer mission</button>
+          <button class="ghost-btn" id="resetMissionBtn">Réinitialiser</button>
+          <button class="btn-primary" id="startMissionBtn">Start</button>
+        </div>
+
+        <div class="motor-command-feedback" id="missionFeedback">
+          Aucune mission envoyée.
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+
+
+.mission-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(12, 34, 64, 0.35);
+}
+
+.mission-table {
+  min-width: 1100px;
+}
+
+.mission-table input {
+  width: 100%;
+  min-width: 80px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-bright);
+  background: var(--card-light);
+  color: var(--text);
+  font-size: 12px;
+  font-family: "Consolas", "Courier New", monospace;
+  outline: none;
+}
+
+.mission-table input:focus {
+  border-color: rgba(42,140,255,0.55);
+  box-shadow: 0 0 0 2px rgba(42,140,255,0.08);
+}
+
+const missionNbMsgMax = document.getElementById("missionNbMsgMax");
+const missionTableBody = document.getElementById("missionTableBody");
+const generateMissionJsonBtn = document.getElementById("generateMissionJsonBtn");
+
+function buildMissionRows(count) {
+    missionTableBody.innerHTML = "";
+
+    count = Math.max(0, Math.min(150, Number(count) || 0));
+
+    for (let i = 0; i < count; i++) {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td><input type="number" class="m-id" value="${i}"></td>
+            <td><input type="number" class="m-type" value="1"></td>
+            <td><input type="number" class="m-duree" value="0"></td>
+            <td><input type="number" class="m-mode" value="0"></td>
+            <td><input type="number" class="m-psi" value="0"></td>
+            <td><input type="number" class="m-immersion" value="0"></td>
+            <td><input type="number" class="m-phi" value="0"></td>
+            <td><input type="number" class="m-theta" value="0"></td>
+            <td><input type="number" class="m-spdlx" value="0"></td>
+            <td><input type="number" class="m-psipt" value="0"></td>
+            <td><input type="number" class="m-rampe" value="0"></td>
+        `;
+
+        missionTableBody.appendChild(tr);
+    }
+}
+
+if (missionNbMsgMax) {
+    missionNbMsgMax.addEventListener("input", () => {
+        buildMissionRows(missionNbMsgMax.value);
+    });
+}
+
+if (generateMissionJsonBtn) {
+    generateMissionJsonBtn.addEventListener("click", () => {
+        const rows = [];
+
+        missionTableBody.querySelectorAll("tr").forEach(tr => {
+            rows.push({
+                id: Number(tr.querySelector(".m-id").value || 0),
+                type: Number(tr.querySelector(".m-type").value || 0),
+                duree_sec: Number(tr.querySelector(".m-duree").value || 0),
+                mode: Number(tr.querySelector(".m-mode").value || 0),
+                psi_deg: Number(tr.querySelector(".m-psi").value || 0),
+                immersion: Number(tr.querySelector(".m-immersion").value || 0),
+                phi_deg: Number(tr.querySelector(".m-phi").value || 0),
+                theta: Number(tr.querySelector(".m-theta").value || 0),
+                spdl_x_kt: Number(tr.querySelector(".m-spdlx").value || 0),
+                psiPt: Number(tr.querySelector(".m-psipt").value || 0),
+                rampe: Number(tr.querySelector(".m-rampe").value || 0)
+            });
+        });
+
+        const missionJson = {
+            missionNbMessageMax: Number(missionNbMsgMax.value || 0),
+            manoeuvres: rows
+        };
+
+        document.getElementById("missionJsonFile").value =
+            JSON.stringify(missionJson, null, 2);
+    });
+}
+
+
+
+      
+
+
