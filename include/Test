@@ -1,0 +1,326 @@
+# Mise en place de la communication entre une IHM Qt et un banc de test PXIe
+
+## Objectif
+
+L'objectif est de faire évoluer progressivement une IHM développée sous Qt afin qu'elle puisse communiquer avec un banc de test PXIe.
+
+Le module **PXIe-8301** ne communique pas directement avec l'IHM. Il joue le rôle de contrôleur distant permettant au PC d'accéder au châssis PXIe. L'application Qt communiquera avec les différents modules du châssis grâce aux drivers National Instruments, notamment **NI-DAQmx**.
+
+L'architecture générale est la suivante :
+
+Interface Qt
+↓
+Backend C++
+↓
+HardwareManager
+↓
+NI-DAQmx
+↓
+PXIe-8301
+↓
+Châssis PXIe
+↓
+Modules PXIe (6528, 4353, 5108, 5413…)
+
+---
+
+# Préparation de l'environnement
+
+Avant de commencer le développement de la communication matérielle, il est nécessaire d'installer les outils suivants.
+
+## 1. Visual Studio
+
+Installer Visual Studio Professional ou Community.
+
+Pendant l'installation, sélectionner :
+
+- Développement Desktop en C++
+- MSVC x64
+- Windows SDK
+- CMake
+
+Le compilateur MSVC sera utilisé par Qt.
+
+---
+
+## 2. Qt Creator
+
+Installer Qt Creator avec un kit Qt compatible MSVC.
+
+Le projet est développé en C++ avec CMake.
+
+---
+
+## 3. NI-DAQmx
+
+Télécharger :
+
+ni-daqmx_26.3_online.exe
+
+Lancer l'installation.
+
+Sélectionner :
+
+- NI-DAQmx Runtime
+- NI-DAQmx C/C++ Support
+- NI MAX
+- Examples
+
+Cette installation ajoute automatiquement les bibliothèques C++ nécessaires.
+
+---
+
+## 4. NI MAX (Measurement & Automation Explorer)
+
+NI MAX permet de vérifier que le châssis PXIe est correctement détecté.
+
+Une fois le matériel connecté, on doit obtenir une arborescence similaire :
+
+PXI System
+├── PXIe-8301
+├── PXIe-6528
+├── PXIe-4353
+├── PXIe-5108
+└── PXIe-5413
+
+Tant que cette étape n'est pas validée, il est inutile de développer la communication dans Qt.
+
+---
+
+# État actuel du projet
+
+Le projet Qt :
+
+- compile correctement ;
+- se lance sans erreur ;
+- possède une architecture organisée avec plusieurs fenêtres ;
+- possède déjà une simulation graphique.
+
+Pour le moment, toute la communication est simulée.
+
+Par exemple :
+
+appendLog("ok", "Connexion établie — " + cfg.chassis + " · NI PXIe-8301");
+
+n'effectue aucune connexion réelle.
+
+---
+
+# Création d'une couche HardwareManager
+
+Afin d'éviter de mélanger le code de l'IHM et celui du matériel, une nouvelle classe est créée.
+
+Cette classe sera responsable de toute la communication avec le matériel.
+
+Architecture :
+
+MainWindow
+↓
+HardwareManager
+↓
+NI-DAQmx
+
+---
+
+# Fichier HardwareManager.h
+
+```cpp
+#pragma once
+
+#include <QObject>
+#include <QString>
+
+class HardwareManager : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit HardwareManager(QObject* parent = nullptr);
+
+    bool connectToChassis(const QString& chassisName);
+    void disconnectFromChassis();
+
+    bool isConnected() const;
+
+signals:
+    void connectionChanged(bool connected);
+    void logMessage(const QString& level,
+                    const QString& message);
+
+private:
+    bool m_connected = false;
+    QString m_chassisName;
+};
+```
+
+---
+
+# Fichier HardwareManager.cpp
+
+```cpp
+#include "HardwareManager.h"
+
+HardwareManager::HardwareManager(QObject* parent)
+    : QObject(parent)
+{
+}
+
+bool HardwareManager::connectToChassis(const QString& chassisName)
+{
+    m_chassisName = chassisName;
+
+    // Connexion simulée
+    // Plus tard :
+    // Appels NI-DAQmx
+
+    m_connected = true;
+
+    emit connectionChanged(m_connected);
+
+    emit logMessage(
+        "ok",
+        "Connexion simulée établie — " + m_chassisName);
+
+    return m_connected;
+}
+
+void HardwareManager::disconnectFromChassis()
+{
+    m_connected = false;
+
+    emit connectionChanged(m_connected);
+
+    emit logMessage(
+        "warn",
+        "Connexion interrompue — " + m_chassisName);
+}
+
+bool HardwareManager::isConnected() const
+{
+    return m_connected;
+}
+```
+
+---
+
+# Modification de MainWindow.h
+
+Ajouter la déclaration de la classe.
+
+```cpp
+class HardwareManager;
+```
+
+Puis ajouter le pointeur dans les variables privées.
+
+```cpp
+ConnectionConfig m_connConfig;
+
+HardwareManager* m_hardware = nullptr;
+
+QMap<QString,bool>         m_voies;
+QMap<QString,QPushButton*> m_voieBtns;
+```
+
+---
+
+# Modification de MainWindow.cpp
+
+Ajouter l'include :
+
+```cpp
+#include "HardwareManager.h"
+```
+
+Dans le constructeur, après :
+
+```cpp
+ui->setupUi(this);
+```
+
+ajouter :
+
+```cpp
+m_hardware = new HardwareManager(this);
+
+connect(
+    m_hardware,
+    &HardwareManager::logMessage,
+    this,
+    &MainWindow::appendLog);
+
+m_hardware->connectToChassis(cfg.chassis);
+```
+
+Supprimer ensuite :
+
+```cpp
+appendLog(
+    "ok",
+    "Connexion établie — " + cfg.chassis + " · NI PXIe-8301");
+```
+
+Le message sera maintenant envoyé automatiquement par HardwareManager.
+
+---
+
+# Modification du CMakeLists.txt
+
+Ajouter les nouveaux fichiers.
+
+```cmake
+src/HardwareManager.cpp
+
+include/HardwareManager.h
+```
+
+Le projet compilera alors cette nouvelle classe.
+
+---
+
+# Résultat attendu
+
+Après compilation :
+
+- l'application se lance normalement ;
+- HardwareManager est créé ;
+- une connexion simulée est effectuée ;
+- un message apparaît dans le journal :
+
+Connexion simulée établie — PXIe-8301
+
+Cette étape permet de vérifier que toute l'architecture logicielle fonctionne correctement avant d'intégrer le matériel réel.
+
+---
+
+# Étape suivante
+
+Une fois le châssis détecté dans NI MAX, la simulation pourra être remplacée par les appels aux drivers NI.
+
+Les premières fonctions à développer seront :
+
+```cpp
+readDigitalInput();
+writeDigitalOutput();
+
+readTemperature();
+
+readOscilloscopeData();
+
+generateSignal();
+```
+
+Ces fonctions permettront de piloter progressivement :
+
+- le PXIe-6528 (entrées/sorties numériques) ;
+- le PXIe-4353 (mesure de température) ;
+- le PXIe-5108 (oscilloscope) ;
+- le PXIe-5413 (générateur de signaux).
+
+Cette architecture sépare clairement :
+
+- l'interface graphique Qt ;
+- la logique applicative ;
+- la communication matérielle.
+
+Cette organisation est celle généralement utilisée dans les applications industrielles afin de faciliter la maintenance, les évolutions et les tests.
