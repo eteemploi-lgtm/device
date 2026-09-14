@@ -1,0 +1,758 @@
+// ============================================================
+// ============================================================
+//        RECEPTION DES JSON DEPUIS LE BACKEND HTTP
+// ============================================================
+// ============================================================
+//
+// Routes attendues côté serveur C :
+//
+// GET /batteries
+// GET /sta
+// GET /etatdevice
+// GET /configdef
+//
+// ============================================================
+
+
+// ============================================================
+// FONCTION GENERIQUE DE RECUPERATION JSON
+// ============================================================
+
+function fetchJson(url) {
+
+    return fetch(url)
+        .then(response => {
+
+            if (!response.ok) {
+                throw new Error(
+                    `Erreur HTTP ${response.status} sur ${url}`
+                );
+            }
+
+            return response.json();
+        });
+}
+
+
+// ============================================================
+// ============================================================
+// 1. BATTERIES
+// ============================================================
+// ============================================================
+
+function getBatteries() {
+
+    fetchJson("/batteries")
+
+        .then(data => {
+
+            console.log(
+                "[HTTP] JSON BATTERIES reçu :",
+                data
+            );
+
+            traiterBatteries(data);
+        })
+
+        .catch(error => {
+
+            console.error(
+                "[HTTP] Erreur batteries :",
+                error
+            );
+        });
+}
+
+
+// ------------------------------------------------------------
+// TRAITEMENT BATTERIES
+// ------------------------------------------------------------
+
+function traiterBatteries(data) {
+
+    if (!data) {
+        console.warn("[BATTERIES] JSON vide");
+        return;
+    }
+
+
+    /*
+        Ton JSON ressemble à :
+
+        {
+            "type": "state",
+            "batterie": {
+                ...
+            }
+        }
+    */
+
+
+    if (data.batterie) {
+
+        console.log(
+            "[BATTERIES] batterie :",
+            data.batterie
+        );
+
+
+        // Fonction déjà présente dans ton projet
+        if (typeof renderBattery === "function") {
+
+            renderBattery(
+                data.batterie
+            );
+        }
+
+        else {
+
+            console.warn(
+                "[BATTERIES] renderBattery() introuvable"
+            );
+        }
+    }
+
+    else {
+
+        console.warn(
+            "[BATTERIES] propriété 'batterie' absente",
+            data
+        );
+    }
+}
+
+
+// ============================================================
+// ============================================================
+// 2. STA
+// ============================================================
+// ============================================================
+
+function getSta() {
+
+    fetchJson("/sta")
+
+        .then(data => {
+
+            console.log(
+                "[HTTP] JSON STA reçu :",
+                data
+            );
+
+            traiterSta(data);
+        })
+
+        .catch(error => {
+
+            console.error(
+                "[HTTP] Erreur STA :",
+                error
+            );
+        });
+}
+
+
+// ------------------------------------------------------------
+// TRAITEMENT STA
+// ------------------------------------------------------------
+
+function traiterSta(data) {
+
+    if (!data) {
+
+        console.warn(
+            "[STA] JSON vide"
+        );
+
+        return;
+    }
+
+
+    /*
+        D'après ton JSON :
+
+        {
+            "ReponseSta": {
+                "dCmdNum_Mess": 0,
+                "dCmdIdent": "0",
+                ...
+            }
+        }
+    */
+
+
+    if (data.ReponseSta) {
+
+        console.log(
+            "[STA] ReponseSta :",
+            data.ReponseSta
+        );
+
+
+        /*
+            ATTENTION :
+
+            Ici je pars du principe que renderSta()
+            peut recevoir directement ReponseSta.
+
+            Si ton ancienne fonction attendait une autre
+            structure, c'est cette ligne qu'on modifiera.
+        */
+
+        if (typeof renderSta === "function") {
+
+            renderSta(
+                data.ReponseSta
+            );
+        }
+
+        else {
+
+            console.warn(
+                "[STA] renderSta() introuvable"
+            );
+        }
+    }
+
+    else {
+
+        console.warn(
+            "[STA] propriété 'ReponseSta' absente",
+            data
+        );
+    }
+}
+
+
+// ============================================================
+// ============================================================
+// 3. ETAT DEVICE
+// ============================================================
+// ============================================================
+
+function getEtatDevice() {
+
+    fetchJson("/etatdevice")
+
+        .then(data => {
+
+            console.log(
+                "[HTTP] JSON ETAT DEVICE reçu :",
+                data
+            );
+
+            traiterEtatDevice(data);
+        })
+
+        .catch(error => {
+
+            console.error(
+                "[HTTP] Erreur EtatDevice :",
+                error
+            );
+        });
+}
+
+
+// ------------------------------------------------------------
+// TRAITEMENT ETAT DEVICE
+// ------------------------------------------------------------
+
+function traiterEtatDevice(data) {
+
+    if (!data) {
+
+        console.warn(
+            "[ETAT DEVICE] JSON vide"
+        );
+
+        return;
+    }
+
+
+    /*
+        Ton JSON contient notamment :
+
+        {
+            "type": "state",
+
+            "apercu": {...},
+
+            "motor": {...},
+
+            "STA": {...},
+
+            "Imu": {...},
+
+            "sensors": {...},
+
+            "gouverne": {...}
+        }
+    */
+
+
+    // --------------------------------------------------------
+    // MOTOR
+    // --------------------------------------------------------
+
+    if (
+        data.motor &&
+        typeof renderMotor === "function"
+    ) {
+
+        renderMotor(
+            data.motor
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // SENSORS
+    // --------------------------------------------------------
+
+    if (
+        data.sensors &&
+        typeof renderSensors === "function"
+    ) {
+
+        renderSensors(
+            data.sensors
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // IMU
+    // --------------------------------------------------------
+
+    if (
+        data.Imu &&
+        typeof renderImu === "function"
+    ) {
+
+        renderImu(
+            data.Imu
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // GOUVERNE
+    // --------------------------------------------------------
+
+    if (
+        data.gouverne &&
+        typeof renderGouv === "function"
+    ) {
+
+        renderGouv(
+            data.gouverne
+        );
+    }
+
+
+    /*
+        Si ton EtatDevice contient également STA
+        et que tu veux l'afficher :
+    */
+
+    if (
+        data.STA &&
+        typeof renderSta === "function"
+    ) {
+
+        renderSta(
+            data.STA
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // STATUS / APERCU
+    // --------------------------------------------------------
+
+    /*
+        Ton nouveau JSON semble utiliser "apercu".
+
+        Si les informations précédemment contenues dans
+        data.Status sont maintenant dans data.apercu,
+        on les traite ici.
+    */
+
+
+    if (data.apercu) {
+
+        const status =
+            data.apercu;
+
+
+        console.log(
+            "[ETAT DEVICE] Apercu :",
+            status
+        );
+
+
+        /*
+            On conserve tes anciens appels
+            updateDeviceStatus() lorsqu'une valeur existe.
+        */
+
+
+        if (
+            status.PhaseLVA !== undefined &&
+            typeof updateDeviceStatus === "function"
+        ) {
+
+            updateDeviceStatus(
+                "dashPhaseLVALed",
+                "dashPhaseLVAText",
+                status.PhaseLVA
+            );
+        }
+
+
+        if (
+            status.EtatComLVA !== undefined &&
+            typeof updateDeviceStatus === "function"
+        ) {
+
+            updateDeviceStatus(
+                "dashEtatComLVALed",
+                "dashEtatComLVAText",
+                status.EtatComLVA
+            );
+        }
+
+
+        if (
+            status.Carte_convertisseur_etat_shutdown !== undefined &&
+            typeof updateDeviceStatus === "function"
+        ) {
+
+            updateDeviceStatus(
+                "dashShutdown",
+                "dashShutdownText",
+                status.Carte_convertisseur_etat_shutdown
+            );
+        }
+
+
+        if (
+            status.Carte_interface_etat_shutdown !== undefined &&
+            typeof updateDeviceStatus === "function"
+        ) {
+
+            updateDeviceStatus(
+                "dashInterfaceShutdown",
+                "dashInterfaceShutdownText",
+                status.Carte_interface_etat_shutdown
+            );
+        }
+
+
+        if (
+            status.Etat_240V !== undefined &&
+            typeof updateDeviceStatus === "function"
+        ) {
+
+            updateDeviceStatus(
+                "dashEtat_240VLed",
+                "dashEtat_240VText",
+                status.Etat_240V
+            );
+        }
+
+
+        if (
+            status.Etat_480Von !== undefined &&
+            typeof updateDeviceStatus === "function"
+        ) {
+
+            updateDeviceStatus(
+                "dashEtat_480VLed",
+                "dashEtat_480VText",
+                status.Etat_480Von
+            );
+        }
+
+
+        if (
+            status.Etat_magic !== undefined &&
+            typeof updateDeviceStatus === "function"
+        ) {
+
+            updateDeviceStatus(
+                "dashEtat_magicLed",
+                "dashEtat_magicText",
+                status.Etat_magic
+            );
+        }
+
+
+        if (
+            status.Etat_torp_out !== undefined &&
+            typeof updateDeviceStatus === "function"
+        ) {
+
+            updateDeviceStatus(
+                "dashEtat_torp_outLed",
+                "dashEtat_torp_outText",
+                status.Etat_torp_out
+            );
+        }
+
+
+        if (
+            status.Etat_contacteurs !== undefined &&
+            typeof updateDeviceStatus === "function"
+        ) {
+
+            updateDeviceStatus(
+                "dashEtat_contacteurs",
+                "dashEtat_contacteursText",
+                status.Etat_contacteurs
+            );
+        }
+    }
+
+
+    console.log(
+        "[ETAT DEVICE] traitement terminé"
+    );
+}
+
+
+// ============================================================
+// ============================================================
+// 4. CONFIGURATION DEF
+// ============================================================
+// ============================================================
+
+function getConfigurationDef() {
+
+    fetchJson("/configdef")
+
+        .then(data => {
+
+            console.log(
+                "[HTTP] JSON CONFIGURATION DEF reçu :",
+                data
+            );
+
+            traiterConfigurationDef(data);
+        })
+
+        .catch(error => {
+
+            console.error(
+                "[HTTP] Erreur ConfigurationDef :",
+                error
+            );
+        });
+}
+
+
+// ------------------------------------------------------------
+// TRAITEMENT CONFIGURATION DEF
+// ------------------------------------------------------------
+
+function traiterConfigurationDef(data) {
+
+    if (!data) {
+
+        console.warn(
+            "[CONFIG] JSON vide"
+        );
+
+        return;
+    }
+
+
+    /*
+        Ton JSON :
+
+        {
+            "ConfigurationDef": {
+                "uiTypeTir": 3,
+                "cFileMission": "...",
+                ...
+            }
+        }
+    */
+
+
+    if (!data.ConfigurationDef) {
+
+        console.warn(
+            "[CONFIG] ConfigurationDef absente",
+            data
+        );
+
+        return;
+    }
+
+
+    const config =
+        data.ConfigurationDef;
+
+
+    console.log(
+        "[CONFIG] Configuration chargée :",
+        config
+    );
+
+
+    // --------------------------------------------------------
+    // Réutilisation de ta fonction existante
+    // --------------------------------------------------------
+
+    if (
+        typeof validateAndFillConfig === "function"
+    ) {
+
+        const result =
+            validateAndFillConfig(
+                config
+            );
+
+
+        console.log(
+            "[CONFIG] Résultat :",
+            result
+        );
+
+
+        // ----------------------------------------------------
+        // LOG
+        // ----------------------------------------------------
+
+        if (
+            typeof addLog === "function" &&
+            result
+        ) {
+
+            addLog(
+
+                `Configuration chargée : ` +
+                `${result.validCount} champ(s) valide(s), ` +
+                `${result.errorCount} erreur(s)`,
+
+                result.errorCount > 0
+                    ? "warn"
+                    : "info"
+            );
+        }
+
+
+        // ----------------------------------------------------
+        // FEEDBACK VISUEL
+        // ----------------------------------------------------
+
+        const feedback =
+            document.getElementById(
+                "configTirFeedback"
+            );
+
+
+        if (
+            feedback &&
+            result
+        ) {
+
+            feedback.textContent =
+                `✓ Configuration chargée ` +
+                `(${result.validCount} champs)`;
+
+
+            setTimeout(
+                () => {
+
+                    feedback.textContent = "";
+
+                },
+                3000
+            );
+        }
+    }
+
+    else {
+
+        console.warn(
+            "[CONFIG] validateAndFillConfig() introuvable"
+        );
+    }
+}
+
+
+// ============================================================
+// ============================================================
+// RECUPERATION DES DONNEES DYNAMIQUES
+// ============================================================
+// ============================================================
+
+function actualiserDonneesBackend() {
+
+    getBatteries();
+
+    getSta();
+
+    getEtatDevice();
+}
+
+
+// ============================================================
+// ============================================================
+// DEMARRAGE
+// ============================================================
+// ============================================================
+
+function demarrerReceptionHttp() {
+
+    console.log(
+        "[HTTP] Démarrage réception backend"
+    );
+
+
+    // --------------------------------------------------------
+    // Configuration :
+    // une fois au démarrage
+    // --------------------------------------------------------
+
+    getConfigurationDef();
+
+
+    // --------------------------------------------------------
+    // Etat dynamique :
+    // immédiatement au démarrage
+    // --------------------------------------------------------
+
+    actualiserDonneesBackend();
+
+
+    // --------------------------------------------------------
+    // Puis actualisation toutes les 1000 ms
+    // --------------------------------------------------------
+
+    setInterval(
+        actualiserDonneesBackend,
+        1000
+    );
+}
+
+
+// ============================================================
+// ATTENDRE QUE LA PAGE HTML SOIT CHARGEE
+// ============================================================
+
+if (document.readyState === "loading") {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        demarrerReceptionHttp
+    );
+}
+
+else {
+
+    demarrerReceptionHttp();
+}
