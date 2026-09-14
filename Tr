@@ -1,3 +1,41 @@
+typedef enum
+{
+    Etape_PriseDeConfiguration = 0,
+    Etape_initialisation,
+    Etape_Alim240,
+    Etape_Alim480,
+    Etape_Autotest,
+    Etape_AttenteTorpOut,
+    Etape_Ready,
+    Etape_Degagement,
+    Etape_Mission,
+    Etape_Finmission,
+    Etape_shutdown
+} eEtapeLVA;
+
+
+Etape_PriseDeConfiguration = 0
+Etape_initialisation       = 1
+Etape_Alim240              = 2
+Etape_Alim480              = 3
+Etape_Autotest             = 4
+Etape_AttenteTorpOut       = 5
+Etape_Ready                = 6
+Etape_Degagement           = 7
+Etape_Mission              = 8
+Etape_Finmission           = 9
+Etape_shutdown             = 10
+
+
+
+
+
+
+
+
+
+
+
 const simulationBatterie = {
     "type": "state",
 
