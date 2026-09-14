@@ -1,0 +1,935 @@
+// ============================================================
+// ============================================================
+//        MODE SIMULATION BACKEND
+// ============================================================
+// ============================================================
+//
+// Aucun fetch()
+// Aucun serveur nécessaire.
+//
+// Les JSON sont générés directement dans le JavaScript.
+//
+// Les fonctions existantes de l'IHM sont conservées :
+//   renderBattery()
+//   renderSta()
+//   renderMotor()
+//   renderSensors()
+//   renderImu()
+//   renderGouv()
+//   validateAndFillConfig()
+//
+// ============================================================
+
+
+// ============================================================
+// ACTIVATION / DESACTIVATION SIMULATION
+// ============================================================
+
+const MODE_SIMULATION = true;
+
+
+// ============================================================
+// ============================================================
+// 1. JSON BATTERIES SIMULE
+// ============================================================
+// ============================================================
+
+let simulationBatterie = {
+
+    type: "state",
+
+    batterie: {
+
+        status: {
+            etatcommCyclable: 2,
+            etatcommIVT: 2,
+            etatcommLTC: 2,
+            etatcommDisque1: 2,
+            etatcommDisque2: 2,
+            etatcommDisque3: 2,
+            etatcommDisque4: 2,
+            etatcommDisque5: 2
+        },
+
+        etat: {
+            courant: 12.5,
+            tension: 24.6,
+            tensioncharge: 25.1
+        },
+
+        infoElt: {
+            elt1tensionmin: 3.40,
+            elt1tensionmax: 4.10,
+            elt1tempmin: 22,
+            elt1tempmax: 28,
+            elt1bmsstate: 1,
+
+            elt2tensionmin: 3.42,
+            elt2tensionmax: 4.08,
+            elt2tempmin: 21,
+            elt2tempmax: 27,
+            elt2bmsstate: 1,
+
+            elt3tensionmin: 3.41,
+            elt3tensionmax: 4.09,
+            elt3tempmin: 22,
+            elt3tempmax: 29,
+            elt3bmsstate: 1,
+
+            elt4tensionmin: 3.39,
+            elt4tensionmax: 4.07,
+            elt4tempmin: 23,
+            elt4tempmax: 28,
+            elt4bmsstate: 1,
+
+            elt5tensionmin: 3.43,
+            elt5tensionmax: 4.11,
+            elt5tempmin: 22,
+            elt5tempmax: 27,
+            elt5bmsstate: 1
+        },
+
+        tempelt: {
+
+            elt1tempdisque1: 24,
+            elt2tempdisque1: 25,
+            elt3tempdisque1: 24,
+
+            elt1tempdisque2: 23,
+            elt2tempdisque2: 24,
+            elt3tempdisque2: 25,
+
+            elt1tempdisque3: 25,
+            elt2tempdisque3: 26,
+            elt3tempdisque3: 25,
+
+            elt1tempdisque4: 24,
+            elt2tempdisque4: 24,
+            elt3tempdisque4: 25,
+
+            elt1tempdisque5: 23,
+            elt2tempdisque5: 24,
+            elt3tempdisque5: 23
+        },
+
+        tensionelt: {
+
+            "Disque1.1": {
+                elt1tension: 3.72,
+                elt2tension: 3.73,
+                elt3tension: 3.71,
+                elt4tension: 3.74,
+                elt5tension: 3.72,
+                elt6tension: 3.73
+            },
+
+            "Disque2.1": {
+                elt1tension: 3.70,
+                elt2tension: 3.72,
+                elt3tension: 3.71,
+                elt4tension: 3.73,
+                elt5tension: 3.74,
+                elt6tension: 3.72
+            },
+
+            "Disque3.1": {
+                elt1tension: 3.71,
+                elt2tension: 3.72,
+                elt3tension: 3.73,
+                elt4tension: 3.70,
+                elt5tension: 3.72,
+                elt6tension: 3.74
+            },
+
+            "Disque4.1": {
+                elt1tension: 3.73,
+                elt2tension: 3.72,
+                elt3tension: 3.71,
+                elt4tension: 3.74,
+                elt5tension: 3.73,
+                elt6tension: 3.72
+            },
+
+            "Disque5.1": {
+                elt1tension: 3.72,
+                elt2tension: 3.74,
+                elt3tension: 3.73,
+                elt4tension: 3.71,
+                elt5tension: 3.72,
+                elt6tension: 3.73
+            },
+
+            MoyenDisque1: {
+                tensionMin: 3.70,
+                tensionMax: 3.74,
+                tensionMoyen: 3.72,
+                Delta: 0.04
+            },
+
+            MoyenDisque2: {
+                tensionMin: 3.70,
+                tensionMax: 3.74,
+                tensionMoyen: 3.72,
+                Delta: 0.04
+            },
+
+            MoyenDisque3: {
+                tensionMin: 3.70,
+                tensionMax: 3.74,
+                tensionMoyen: 3.72,
+                Delta: 0.04
+            },
+
+            MoyenDisque4: {
+                tensionMin: 3.71,
+                tensionMax: 3.74,
+                tensionMoyen: 3.72,
+                Delta: 0.03
+            },
+
+            MoyenDisque5: {
+                tensionMin: 3.71,
+                tensionMax: 3.74,
+                tensionMoyen: 3.72,
+                Delta: 0.03
+            }
+        }
+    }
+};
+
+
+// ============================================================
+// ============================================================
+// 2. JSON STA SIMULE
+// ============================================================
+// ============================================================
+
+let simulationSta = {
+
+    ReponseSta: {
+
+        dCmdNum_Mess: 1,
+
+        dCmdIdent: "1",
+
+        dCmdNum_Seq: 12,
+
+        dAckNum_Mess: 1,
+
+        dAckRes_Det_test: 0,
+
+        dAckNum_Seq: 12,
+
+        dAckNum_SeqEncours: 12,
+
+        dAckMem_SSD: 0,
+
+        dAckErreur: 0,
+
+        dIdManoeuvre: 1
+    }
+};
+
+
+// ============================================================
+// ============================================================
+// 3. JSON ETAT DEVICE SIMULE
+// ============================================================
+// ============================================================
+
+let simulationEtatDevice = {
+
+    type: "state",
+
+
+    // --------------------------------------------------------
+    // APERCU
+    // --------------------------------------------------------
+
+    apercu: {
+
+        Etape: "1",
+
+        EtatCom: "1",
+
+        etatShd: 0,
+
+        Etat240: 1,
+
+        Etat480: 1,
+
+        EtatMagic: 1,
+
+        Etattorpout: 0,
+
+        EtatContact: 1
+    },
+
+
+    // --------------------------------------------------------
+    // MOTOR
+    // --------------------------------------------------------
+
+    motor: {
+
+        state: "3",
+
+        rpm_actual: 1250,
+
+        rpm_cmd: 1500,
+
+        temperature: 42,
+
+        statusword: 0
+    },
+
+
+    // --------------------------------------------------------
+    // STA
+    // --------------------------------------------------------
+
+    STA: {
+
+        state: "3",
+
+        Tensionnominale_240: 240,
+
+        CourantMoyen_240: 15,
+
+        CourantInstantanne_240: 17,
+
+        Tensionnominale_24: 24,
+
+        CourantMoyen_24: 4,
+
+        CourantInstantanne_24: 5
+    },
+
+
+    // --------------------------------------------------------
+    // IMU
+    // --------------------------------------------------------
+
+    Imu: {
+
+        state_Vitesse: "0",
+
+        state_Acc: "3",
+
+        vitesse_lineaire: 2.5,
+
+        latitude: 43.25,
+
+        longitude: 6.58,
+
+        immersion: 0.75,
+
+        bande: 0,
+
+        assiette: 1.5,
+
+        cap: 1610612736
+    },
+
+
+    // --------------------------------------------------------
+    // SENSORS
+    // --------------------------------------------------------
+
+    sensors: {
+
+        water: 0,
+
+        pressure: 1.25,
+
+        temp_smo1: 22.5,
+
+        temp_smo2: 23.1,
+
+        temp_smo3: 22.8,
+
+        temp_plaque: 26.4,
+
+        immersion: 0.75
+    },
+
+
+    // --------------------------------------------------------
+    // GOUVERNE
+    // --------------------------------------------------------
+
+    gouverne: {
+
+        sup: {
+
+            position_Cmd: 0.112374,
+
+            position_mes: 0.10,
+
+            vitesse: 0.02,
+
+            couple: 0,
+
+            statut_word: 0
+        },
+
+        tri: {
+
+            position_Cmd: 0,
+
+            position_mes: 0,
+
+            vitesse: 0,
+
+            couple: 0,
+
+            statut_word: 0
+        },
+
+        inf: {
+
+            position_Cmd: 0,
+
+            position_mes: 0,
+
+            vitesse: 0,
+
+            couple: 0,
+
+            statut_word: 0
+        },
+
+        bab: {
+
+            position_Cmd: 0,
+
+            position_mes: 0,
+
+            vitesse: 0,
+
+            couple: 0,
+
+            statut_word: 4101800962
+        }
+    }
+};
+
+
+// ============================================================
+// ============================================================
+// 4. JSON CONFIGURATION DEF SIMULE
+// ============================================================
+// ============================================================
+
+let simulationConfigurationDef = {
+
+    ConfigurationDef: {
+
+        uiTypeTir: 3,
+
+        cFileMission: "missionSta1.ppg",
+
+        uiTps_SortieTube: 3,
+
+        uiTps_Rall_Imm: 5,
+
+        uiTps_Rall_Cap: 5,
+
+        fPlancher: 35,
+
+        fPlafond: 5,
+
+        uiTps_Mur: 0,
+
+        uiDist_Mur: 70,
+
+        uiTps_Shd_Carte: 3.00,
+
+        uiTpsTir: 350000.00,
+
+        TypeEnreg: 1,
+
+        TypeExec: 1
+    }
+};
+
+
+// ============================================================
+// ============================================================
+// TRAITEMENT BATTERIES
+// ============================================================
+// ============================================================
+
+function traiterBatteries(data) {
+
+    console.log(
+        "[SIMULATION] BATTERIES :",
+        data
+    );
+
+
+    if (
+        data &&
+        data.batterie &&
+        typeof renderBattery === "function"
+    ) {
+
+        renderBattery(
+            data.batterie
+        );
+    }
+}
+
+
+// ============================================================
+// ============================================================
+// TRAITEMENT STA
+// ============================================================
+// ============================================================
+
+function traiterSta(data) {
+
+    console.log(
+        "[SIMULATION] STA :",
+        data
+    );
+
+
+    if (
+        data &&
+        data.ReponseSta &&
+        typeof renderSta === "function"
+    ) {
+
+        renderSta(
+            data.ReponseSta
+        );
+    }
+}
+
+
+// ============================================================
+// ============================================================
+// TRAITEMENT ETAT DEVICE
+// ============================================================
+// ============================================================
+
+function traiterEtatDevice(data) {
+
+    console.log(
+        "[SIMULATION] ETAT DEVICE :",
+        data
+    );
+
+
+    if (!data) {
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // MOTOR
+    // --------------------------------------------------------
+
+    if (
+        data.motor &&
+        typeof renderMotor === "function"
+    ) {
+
+        renderMotor(
+            data.motor
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // SENSORS
+    // --------------------------------------------------------
+
+    if (
+        data.sensors &&
+        typeof renderSensors === "function"
+    ) {
+
+        renderSensors(
+            data.sensors
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // IMU
+    // --------------------------------------------------------
+
+    if (
+        data.Imu &&
+        typeof renderImu === "function"
+    ) {
+
+        renderImu(
+            data.Imu
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // GOUVERNE
+    // --------------------------------------------------------
+
+    if (
+        data.gouverne &&
+        typeof renderGouv === "function"
+    ) {
+
+        renderGouv(
+            data.gouverne
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // STA présent dans EtatDevice
+    // --------------------------------------------------------
+
+    if (
+        data.STA &&
+        typeof renderSta === "function"
+    ) {
+
+        renderSta(
+            data.STA
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // APERCU
+    // --------------------------------------------------------
+
+    if (data.apercu) {
+
+        console.log(
+            "[SIMULATION] APERCU :",
+            data.apercu
+        );
+    }
+}
+
+
+// ============================================================
+// ============================================================
+// TRAITEMENT CONFIGURATION
+// ============================================================
+// ============================================================
+
+function traiterConfigurationDef(data) {
+
+    console.log(
+        "[SIMULATION] CONFIGURATION DEF :",
+        data
+    );
+
+
+    if (
+        !data ||
+        !data.ConfigurationDef
+    ) {
+
+        return;
+    }
+
+
+    const config =
+        data.ConfigurationDef;
+
+
+    if (
+        typeof validateAndFillConfig
+        === "function"
+    ) {
+
+        const result =
+            validateAndFillConfig(
+                config
+            );
+
+
+        console.log(
+            "[SIMULATION CONFIG] résultat :",
+            result
+        );
+
+
+        if (
+            typeof addLog === "function" &&
+            result
+        ) {
+
+            addLog(
+
+                `Configuration simulation chargée : ` +
+                `${result.validCount} champ(s) valide(s), ` +
+                `${result.errorCount} erreur(s)`,
+
+                result.errorCount > 0
+                    ? "warn"
+                    : "info"
+            );
+        }
+    }
+}
+
+
+// ============================================================
+// ============================================================
+// GENERATION DE VALEURS DYNAMIQUES
+// ============================================================
+// ============================================================
+
+function mettreAJourSimulation() {
+
+
+    // ========================================================
+    // MOTOR
+    // ========================================================
+
+    simulationEtatDevice.motor.rpm_actual =
+        Math.round(
+            1200 +
+            Math.random() * 300
+        );
+
+
+    simulationEtatDevice.motor.temperature =
+        Number(
+            (
+                40 +
+                Math.random() * 5
+            ).toFixed(1)
+        );
+
+
+    // ========================================================
+    // IMU
+    // ========================================================
+
+    simulationEtatDevice.Imu.vitesse_lineaire =
+        Number(
+            (
+                2 +
+                Math.random()
+            ).toFixed(2)
+        );
+
+
+    simulationEtatDevice.Imu.assiette =
+        Number(
+            (
+                -3 +
+                Math.random() * 6
+            ).toFixed(2)
+        );
+
+
+    simulationEtatDevice.Imu.immersion =
+        Number(
+            (
+                0.70 +
+                Math.random() * 0.15
+            ).toFixed(2)
+        );
+
+
+    // ========================================================
+    // CAPTEURS
+    // ========================================================
+
+    simulationEtatDevice.sensors.pressure =
+        Number(
+            (
+                1.20 +
+                Math.random() * 0.10
+            ).toFixed(2)
+        );
+
+
+    simulationEtatDevice.sensors.temp_smo1 =
+        Number(
+            (
+                22 +
+                Math.random() * 2
+            ).toFixed(1)
+        );
+
+
+    simulationEtatDevice.sensors.temp_smo2 =
+        Number(
+            (
+                22 +
+                Math.random() * 2
+            ).toFixed(1)
+        );
+
+
+    simulationEtatDevice.sensors.temp_smo3 =
+        Number(
+            (
+                22 +
+                Math.random() * 2
+            ).toFixed(1)
+        );
+
+
+    // ========================================================
+    // GOUVERNE
+    // ========================================================
+
+    simulationEtatDevice.gouverne.sup.position_mes =
+        Number(
+            (
+                simulationEtatDevice.gouverne.sup.position_Cmd +
+                (Math.random() - 0.5) * 0.02
+            ).toFixed(4)
+        );
+
+
+    // ========================================================
+    // BATTERIE
+    // ========================================================
+
+    simulationBatterie.batterie.etat.tension =
+        Number(
+            (
+                24.4 +
+                Math.random() * 0.4
+            ).toFixed(2)
+        );
+
+
+    simulationBatterie.batterie.etat.courant =
+        Number(
+            (
+                10 +
+                Math.random() * 5
+            ).toFixed(2)
+        );
+
+
+    // ========================================================
+    // STA
+    // ========================================================
+
+    simulationSta.ReponseSta.dCmdNum_Seq++;
+
+    simulationSta.ReponseSta.dAckNum_Seq =
+        simulationSta.ReponseSta.dCmdNum_Seq;
+}
+
+
+// ============================================================
+// ============================================================
+// ACTUALISATION DE L'IHM
+// ============================================================
+// ============================================================
+
+function actualiserSimulation() {
+
+
+    // --------------------------------------------------------
+    // Faire évoluer les données
+    // --------------------------------------------------------
+
+    mettreAJourSimulation();
+
+
+    // --------------------------------------------------------
+    // Envoyer les données aux fonctions de l'IHM
+    // --------------------------------------------------------
+
+    traiterBatteries(
+        simulationBatterie
+    );
+
+
+    traiterSta(
+        simulationSta
+    );
+
+
+    traiterEtatDevice(
+        simulationEtatDevice
+    );
+}
+
+
+// ============================================================
+// ============================================================
+// DEMARRAGE DU MODE SIMULATION
+// ============================================================
+// ============================================================
+
+function demarrerSimulation() {
+
+    if (!MODE_SIMULATION) {
+        return;
+    }
+
+
+    console.log(
+        "========================================"
+    );
+
+    console.log(
+        "MODE SIMULATION BACKEND ACTIF"
+    );
+
+    console.log(
+        "========================================"
+    );
+
+
+    // --------------------------------------------------------
+    // Configuration envoyée une seule fois
+    // --------------------------------------------------------
+
+    traiterConfigurationDef(
+        simulationConfigurationDef
+    );
+
+
+    // --------------------------------------------------------
+    // Premier état immédiatement
+    // --------------------------------------------------------
+
+    actualiserSimulation();
+
+
+    // --------------------------------------------------------
+    // Nouvel état chaque seconde
+    // --------------------------------------------------------
+
+    setInterval(
+        actualiserSimulation,
+        1000
+    );
+}
+
+
+// ============================================================
+// ============================================================
+// LANCEMENT
+// ============================================================
+// ============================================================
+
+if (document.readyState === "loading") {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        demarrerSimulation
+    );
+}
+
+else {
+
+    demarrerSimulation();
+}
