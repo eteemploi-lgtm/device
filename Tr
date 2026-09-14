@@ -1,3 +1,411 @@
+const simulationBatterie = {
+    "type": "state",
+
+    "batterie": {
+
+        // ====================================================
+        // STATUS COMMUNICATION
+        // ====================================================
+
+        "status": {
+            "etatcommCyclable": 2,
+            "etatcommIVT": 2,
+            "etatcommLTC": 2,
+
+            "etatcommDisque1": 2,
+            "etatcommDisque2": 2,
+            "etatcommDisque3": 2,
+            "etatcommDisque4": 2,
+            "etatcommDisque5": 2
+        },
+
+
+        // ====================================================
+        // ETAT GENERAL BATTERIE
+        // ====================================================
+
+        "etat": {
+            "courant": 12.5,
+            "tension": 24.6,
+            "tensioncharge": 25.2
+        },
+
+
+        // ====================================================
+        // INFORMATIONS ELEMENTS
+        // ====================================================
+
+        "infoelt": {
+
+            "elt1tensionmin": 3.68,
+            "elt1tensionmax": 3.74,
+            "elt1tempmin": 22,
+            "elt1tempmax": 27,
+            "elt1bmsstate": 1,
+
+            "elt2tensionmin": 3.69,
+            "elt2tensionmax": 3.75,
+            "elt2tempmin": 21,
+            "elt2tempmax": 26,
+            "elt2bmsstate": 1,
+
+            "elt3tensionmin": 3.67,
+            "elt3tensionmax": 3.73,
+            "elt3tempmin": 22,
+            "elt3tempmax": 28,
+            "elt3bmsstate": 1,
+
+            "elt4tensionmin": 3.70,
+            "elt4tensionmax": 3.76,
+            "elt4tempmin": 23,
+            "elt4tempmax": 27,
+            "elt4bmsstate": 1,
+
+            "elt5tensionmin": 3.68,
+            "elt5tensionmax": 3.74,
+            "elt5tempmin": 22,
+            "elt5tempmax": 26,
+            "elt5bmsstate": 1
+        },
+
+
+        // ====================================================
+        // TEMPERATURES DES DISQUES
+        // ====================================================
+
+        "tempelt": {
+
+            "elt1tempdisque1": 23,
+            "elt1tempdisque2": 24,
+
+            "elt2tempdisque1": 24,
+            "elt2tempdisque2": 25,
+
+            "elt3tempdisque1": 23,
+            "elt3tempdisque2": 24,
+
+            "elt4tempdisque1": 25,
+            "elt4tempdisque2": 24,
+
+            "elt5tempdisque1": 24,
+            "elt5tempdisque2": 23
+        },
+
+
+        // ====================================================
+        // TENSIONS DES ELEMENTS
+        // ====================================================
+
+        "tensionelt": {
+
+
+            // =================================================
+            // DISQUE 1.1
+            // =================================================
+
+            "Disque1.1": {
+
+                "elt1tension": 3.71,
+                "elt2tension": 3.72,
+                "elt3tension": 3.70,
+                "elt4tension": 3.73,
+                "elt5tension": 3.72,
+                "elt6tension": 3.71,
+                "elt7tension": 3.74,
+                "elt8tension": 3.72,
+                "elt9tension": 3.73,
+                "elt10tension": 3.71,
+                "elt11tension": 3.72,
+                "elt12tension": 3.70,
+                "elt13tension": 3.73,
+                "elt14tension": 3.72
+            },
+
+
+            // =================================================
+            // DISQUE 1.2
+            // =================================================
+
+            "Disque1.2": {
+
+                "elt15tension": 3.71,
+                "elt16tension": 3.72,
+                "elt17tension": 3.73,
+                "elt18tension": 3.70,
+                "elt19tension": 3.72,
+                "elt20tension": 3.74,
+                "elt21tension": 3.71,
+                "elt22tension": 3.73,
+                "elt23tension": 3.72,
+                "elt24tension": 3.70,
+                "elt25tension": 3.71,
+                "elt26tension": 3.73,
+                "elt27tension": 3.72
+            },
+
+
+            // =================================================
+            // DISQUE 2.1
+            // =================================================
+
+            "Disque2.1": {
+
+                "elt1tension": 3.70,
+                "elt2tension": 3.71,
+                "elt3tension": 3.72,
+                "elt4tension": 3.73,
+                "elt5tension": 3.71,
+                "elt6tension": 3.72,
+                "elt7tension": 3.70,
+                "elt8tension": 3.74,
+                "elt9tension": 3.72,
+                "elt10tension": 3.71,
+                "elt11tension": 3.73,
+                "elt12tension": 3.72,
+                "elt13tension": 3.70,
+                "elt14tension": 3.71
+            },
+
+
+            // =================================================
+            // DISQUE 2.2
+            // =================================================
+
+            "Disque2.2": {
+
+                "elt15tension": 3.72,
+                "elt16tension": 3.73,
+                "elt17tension": 3.71,
+                "elt18tension": 3.72,
+                "elt19tension": 3.70,
+                "elt20tension": 3.74,
+                "elt21tension": 3.73,
+                "elt22tension": 3.72,
+                "elt23tension": 3.71,
+                "elt24tension": 3.73,
+                "elt25tension": 3.72,
+                "elt26tension": 3.70,
+                "elt27tension": 3.71
+            },
+
+
+            // =================================================
+            // DISQUE 3.1
+            // =================================================
+
+            "Disque3.1": {
+
+                "elt1tension": 3.72,
+                "elt2tension": 3.71,
+                "elt3tension": 3.73,
+                "elt4tension": 3.70,
+                "elt5tension": 3.72,
+                "elt6tension": 3.74,
+                "elt7tension": 3.71,
+                "elt8tension": 3.72,
+                "elt9tension": 3.73,
+                "elt10tension": 3.70,
+                "elt11tension": 3.71,
+                "elt12tension": 3.72,
+                "elt13tension": 3.74,
+                "elt14tension": 3.73
+            },
+
+
+            // =================================================
+            // DISQUE 3.2
+            // =================================================
+
+            "Disque3.2": {
+
+                "elt15tension": 3.71,
+                "elt16tension": 3.72,
+                "elt17tension": 3.73,
+                "elt18tension": 3.72,
+                "elt19tension": 3.70,
+                "elt20tension": 3.71,
+                "elt21tension": 3.74,
+                "elt22tension": 3.72,
+                "elt23tension": 3.73,
+                "elt24tension": 3.71,
+                "elt25tension": 3.72,
+                "elt26tension": 3.70,
+                "elt27tension": 3.73
+            },
+
+
+            // =================================================
+            // DISQUE 4.1
+            // =================================================
+
+            "Disque4.1": {
+
+                "elt1tension": 3.73,
+                "elt2tension": 3.72,
+                "elt3tension": 3.71,
+                "elt4tension": 3.74,
+                "elt5tension": 3.72,
+                "elt6tension": 3.70,
+                "elt7tension": 3.73,
+                "elt8tension": 3.71,
+                "elt9tension": 3.72,
+                "elt10tension": 3.74,
+                "elt11tension": 3.73,
+                "elt12tension": 3.71,
+                "elt13tension": 3.72,
+                "elt14tension": 3.70
+            },
+
+
+            // =================================================
+            // DISQUE 4.2
+            // =================================================
+
+            "Disque4.2": {
+
+                "elt15tension": 3.72,
+                "elt16tension": 3.73,
+                "elt17tension": 3.71,
+                "elt18tension": 3.74,
+                "elt19tension": 3.72,
+                "elt20tension": 3.70,
+                "elt21tension": 3.73,
+                "elt22tension": 3.72,
+                "elt23tension": 3.71,
+                "elt24tension": 3.74,
+                "elt25tension": 3.72,
+                "elt26tension": 3.73,
+                "elt27tension": 3.71
+            },
+
+
+            // =================================================
+            // DISQUE 5.1
+            // =================================================
+
+            "Disque5.1": {
+
+                "elt1tension": 3.72,
+                "elt2tension": 3.74,
+                "elt3tension": 3.73,
+                "elt4tension": 3.71,
+                "elt5tension": 3.72,
+                "elt6tension": 3.70,
+                "elt7tension": 3.73,
+                "elt8tension": 3.72,
+                "elt9tension": 3.74,
+                "elt10tension": 3.71,
+                "elt11tension": 3.73,
+                "elt12tension": 3.72,
+                "elt13tension": 3.70,
+                "elt14tension": 3.71
+            },
+
+
+            // =================================================
+            // DISQUE 5.2
+            // =================================================
+
+            "Disque5.2": {
+
+                "elt15tension": 3.72,
+                "elt16tension": 3.73,
+                "elt17tension": 3.71,
+                "elt18tension": 3.74,
+                "elt19tension": 3.72,
+                "elt20tension": 3.70,
+                "elt21tension": 3.73,
+                "elt22tension": 3.72,
+                "elt23tension": 3.71,
+                "elt24tension": 3.74,
+                "elt25tension": 3.72,
+                "elt26tension": 3.73,
+                "elt27tension": 3.71
+            },
+
+
+            // =================================================
+            // MOYENNES DISQUE 1
+            // =================================================
+
+            "MoyenDisque1": {
+
+                "tensionMin": 3.70,
+
+                "tensionMax": 3.74,
+
+                "tensionMoyen": 3.72,
+
+                "Delta": 0.04
+            },
+
+
+            // =================================================
+            // MOYENNES DISQUE 2
+            // =================================================
+
+            "MoyenDisque2": {
+
+                "tensionMin": 3.70,
+
+                "tensionMax": 3.74,
+
+                "tensionMoyen": 3.72,
+
+                "Delta": 0.04
+            },
+
+
+            // =================================================
+            // MOYENNES DISQUE 3
+            // =================================================
+
+            "MoyenDisque3": {
+
+                "tensionMin": 3.70,
+
+                "tensionMax": 3.74,
+
+                "tensionMoyen": 3.72,
+
+                "Delta": 0.04
+            },
+
+
+            // =================================================
+            // MOYENNES DISQUE 4
+            // =================================================
+
+            "MoyenDisque4": {
+
+                "tensionMin": 3.70,
+
+                "tensionMax": 3.74,
+
+                "tensionMoyen": 3.72,
+
+                "Delta": 0.04
+            },
+
+
+            // =================================================
+            // MOYENNES DISQUE 5
+            // =================================================
+
+            "MoyenDisque5": {
+
+                "tensionMin": 3.70,
+
+                "tensionMax": 3.74,
+
+                "tensionMoyen": 3.72,
+
+                "Delta": 0.04
+            }
+        }
+    }
+};
+
 // ============================================================
 // ============================================================
 //        RECEPTION DES JSON DEPUIS LE BACKEND HTTP
