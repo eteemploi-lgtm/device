@@ -1,0 +1,76 @@
+// ============================================================
+// ENVOI GENERIQUE FRONT -> SERVEUR C
+// ============================================================
+
+function envoyerMessageBackend(data) {
+
+    console.log(
+        "[FRONT -> BACK] Envoi :",
+        data
+    );
+
+    return fetch("/message", {
+
+        method: "POST",
+
+        headers: {
+            "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify(data)
+
+    })
+
+    .then(response => {
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Erreur HTTP ${response.status}`
+            );
+        }
+
+        return response.json();
+    })
+
+    .then(reponse => {
+
+        console.log(
+            "[BACK -> FRONT] Accusé réception :",
+            reponse
+        );
+
+        return reponse;
+    })
+
+    .catch(error => {
+
+        console.error(
+            "[FRONT -> BACK] Erreur :",
+            error
+        );
+
+        throw error;
+    });
+}
+
+
+envoyerMessageBackend({
+
+    type: "ConfigurationDef",
+
+    ConfigurationDef: {
+
+        uiTypeTir: 3,
+
+        cFileMission: "missionSta1.ppg",
+
+        uiTps_SortieTube: 3,
+
+        uiTps_Rall_Imm: 5,
+
+        uiTps_Rall_Cap: 5
+    }
+
+});
+
