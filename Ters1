@@ -1,0 +1,2401 @@
+// ============================================================
+//                         server.c
+// ============================================================
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+
+// ============================================================
+// CONFIGURATION
+// ============================================================
+
+#define PORT 8090
+
+#define REQUEST_BUFFER_SIZE 65536
+
+#define BASE_PATH "/home/ecrin/AP/IHM"
+
+
+// ============================================================
+// ENVOYER TOUTES LES DONNEES
+// ============================================================
+
+int envoyer_tout(
+    int socket_fd,
+    const char *buffer,
+    size_t longueur
+)
+{
+    size_t total = 0;
+
+    while (total < longueur)
+    {
+        ssize_t envoye = send(
+            socket_fd,
+            buffer + total,
+            longueur - total,
+            0
+        );
+
+        if (envoye <= 0)
+        {
+            return -1;
+        }
+
+        total += (size_t)envoye;
+    }
+
+    return 0;
+}
+
+
+// ============================================================
+// HEADERS HTTP
+// ============================================================
+
+void envoyer_headers(
+    int client_fd,
+    const char *status,
+    const char *content_type,
+    size_t content_length
+)
+{
+    char header[1024];
+
+    int taille = snprintf(
+        header,
+        sizeof(header),
+
+        "HTTP/1.1 %s\r\n"
+        "Content-Type: %s\r\n"
+        "Access-Control-Allow-Origin: *\r\n"
+        "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+        "Access-Control-Allow-Headers: Content-Type\r\n"
+        "Content-Length: %zu\r\n"
+        "Connection: close\r\n"
+        "\r\n",
+
+        status,
+        content_type,
+        content_length
+    );
+
+    if (taille > 0)
+    {
+        envoyer_tout(
+            client_fd,
+            header,
+            (size_t)taille
+        );
+    }
+}
+
+
+// ============================================================
+// ENVOYER JSON
+// ============================================================
+
+void envoyer_json(
+    int client_fd,
+    const char *json
+)
+{
+    envoyer_headers(
+        client_fd,
+        "200 OK",
+        "application/json; charset=utf-8",
+        strlen(json)
+    );
+
+    envoyer_tout(
+        client_fd,
+        json,
+        strlen(json)
+    );
+}
+
+
+// ============================================================
+// ENVOYER ERREUR JSON
+// ============================================================
+
+void envoyer_erreur_json(
+    int client_fd,
+    const char *status,
+    const char *message
+)
+{
+    char json[1024];
+
+    snprintf(
+        json,
+        sizeof(json),
+        "{"
+            "\"success\":false,"
+            "\"message\":\"%s\""
+        "}",
+        message
+    );
+
+    envoyer_headers(
+        client_fd,
+        status,
+        "application/json; charset=utf-8",
+        strlen(json)
+    );
+
+    envoyer_tout(
+        client_fd,
+        json,
+        strlen(json)
+    );
+}
+
+
+// ============================================================
+// LECTURE D'UN FICHIER
+// ============================================================
+
+char *lire_fichier(
+    const char *chemin,
+    size_t *taille
+)
+{
+    FILE *fichier = fopen(
+        chemin,
+        "rb"
+    );
+
+    if (fichier == NULL)
+    {
+        printf(
+            "[ERREUR] Fichier introuvable : %s\n",
+            chemin
+        );
+
+        return NULL;
+    }
+
+
+    if (fseek(fichier, 0, SEEK_END) != 0)
+    {
+        fclose(fichier);
+        return NULL;
+    }
+
+
+    long longueur = ftell(fichier);
+
+    if (longueur < 0)
+    {
+        fclose(fichier);
+        return NULL;
+    }
+
+
+    rewind(fichier);
+
+
+    char *contenu = malloc(
+        (size_t)longueur + 1
+    );
+
+    if (contenu == NULL)
+    {
+        fclose(fichier);
+        return NULL;
+    }
+
+
+    size_t lu = fread(
+        contenu,
+        1,
+        (size_t)longueur,
+        fichier
+    );
+
+
+    contenu[lu] = '\0';
+
+    fclose(fichier);
+
+    *taille = lu;
+
+    return contenu;
+}
+
+
+// ============================================================
+// ENVOYER UN FICHIER AU NAVIGATEUR
+// ============================================================
+
+void envoyer_fichier(
+    int client_fd,
+    const char *chemin,
+    const char *content_type
+)
+{
+    size_t taille = 0;
+
+    char *contenu = lire_fichier(
+        chemin,
+        &taille
+    );
+
+
+    if (contenu == NULL)
+    {
+        const char *erreur =
+            "404 - Fichier introuvable";
+
+        envoyer_headers(
+            client_fd,
+            "404 Not Found",
+            "text/plain; charset=utf-8",
+            strlen(erreur)
+        );
+
+        envoyer_tout(
+            client_fd,
+            erreur,
+            strlen(erreur)
+        );
+
+        return;
+    }
+
+
+    envoyer_headers(
+        client_fd,
+        "200 OK",
+        content_type,
+        taille
+    );
+
+
+    envoyer_tout(
+        client_fd,
+        contenu,
+        taille
+    );
+
+
+    free(contenu);
+}
+
+
+// ============================================================
+// RECUPERER CONTENT-LENGTH
+// ============================================================
+
+size_t obtenir_content_length(
+    const char *request
+)
+{
+    const char *position = strstr(
+        request,
+        "Content-Length:"
+    );
+
+    if (position == NULL)
+    {
+        position = strstr(
+            request,
+            "content-length:"
+        );
+    }
+
+
+    if (position == NULL)
+    {
+        return 0;
+    }
+
+
+    position = strchr(
+        position,
+        ':'
+    );
+
+
+    if (position == NULL)
+    {
+        return 0;
+    }
+
+
+    position++;
+
+
+    while (
+        *position == ' ' ||
+        *position == '\t'
+    )
+    {
+        position++;
+    }
+
+
+    return (size_t)strtoul(
+        position,
+        NULL,
+        10
+    );
+}
+
+
+// ============================================================
+// TROUVER LE BODY HTTP
+// ============================================================
+
+char *trouver_body_http(
+    char *request
+)
+{
+    char *body = strstr(
+        request,
+        "\r\n\r\n"
+    );
+
+
+    if (body == NULL)
+    {
+        return NULL;
+    }
+
+
+    return body + 4;
+}
+
+
+// ============================================================
+// ============================================================
+// RECEPTION COMPLETE D'UNE REQUETE HTTP
+// ============================================================
+// ============================================================
+
+ssize_t recevoir_requete_http(
+    int client_fd,
+    char *buffer,
+    size_t taille_buffer
+)
+{
+    size_t total = 0;
+
+    size_t taille_headers = 0;
+
+    size_t content_length = 0;
+
+    int headers_trouves = 0;
+
+
+    while (
+        total < taille_buffer - 1
+    )
+    {
+        ssize_t recu = recv(
+            client_fd,
+            buffer + total,
+            taille_buffer - 1 - total,
+            0
+        );
+
+
+        if (recu < 0)
+        {
+            perror("recv");
+            return -1;
+        }
+
+
+        if (recu == 0)
+        {
+            break;
+        }
+
+
+        total += (size_t)recu;
+
+        buffer[total] = '\0';
+
+
+        // ----------------------------------------------------
+        // Recherche fin des headers
+        // ----------------------------------------------------
+
+        if (!headers_trouves)
+        {
+            char *fin_headers = strstr(
+                buffer,
+                "\r\n\r\n"
+            );
+
+
+            if (fin_headers != NULL)
+            {
+                headers_trouves = 1;
+
+                taille_headers =
+                    (size_t)(
+                        fin_headers - buffer
+                    ) + 4;
+
+
+                content_length =
+                    obtenir_content_length(
+                        buffer
+                    );
+
+
+                // GET sans body
+                if (content_length == 0)
+                {
+                    break;
+                }
+            }
+        }
+
+
+        // ----------------------------------------------------
+        // Si headers trouvés :
+        // vérifier que tout le body est arrivé
+        // ----------------------------------------------------
+
+        if (headers_trouves)
+        {
+            size_t taille_totale_attendue =
+                taille_headers +
+                content_length;
+
+
+            if (
+                total >=
+                taille_totale_attendue
+            )
+            {
+                break;
+            }
+        }
+    }
+
+
+    buffer[total] = '\0';
+
+    return (ssize_t)total;
+}
+
+
+// ============================================================
+// ============================================================
+// FRONT -> BACK
+//
+// POST /message
+// ============================================================
+// ============================================================
+
+void recevoir_message_front(
+    int client_fd,
+    char *request
+)
+{
+    char *body =
+        trouver_body_http(
+            request
+        );
+
+
+    if (
+        body == NULL ||
+        strlen(body) == 0
+    )
+    {
+        printf(
+            "[FRONT -> BACK] Body manquant\n"
+        );
+
+
+        envoyer_erreur_json(
+            client_fd,
+            "400 Bad Request",
+            "Body JSON manquant"
+        );
+
+
+        return;
+    }
+
+
+    // ========================================================
+    // AFFICHAGE DU MESSAGE RECU
+    // ========================================================
+
+    printf("\n");
+
+    printf(
+        "====================================================\n"
+    );
+
+    printf(
+        "       MESSAGE RECU DEPUIS LE FRONT\n"
+    );
+
+    printf(
+        "====================================================\n"
+    );
+
+
+    printf(
+        "%s\n",
+        body
+    );
+
+
+    printf(
+        "====================================================\n"
+    );
+
+
+    // ========================================================
+    // DETECTION BASIQUE
+    // ========================================================
+
+    char *debut = body;
+
+
+    while (
+        *debut == ' ' ||
+        *debut == '\n' ||
+        *debut == '\r' ||
+        *debut == '\t'
+    )
+    {
+        debut++;
+    }
+
+
+    if (*debut == '{')
+    {
+        printf(
+            "[FRONT -> BACK] Type : OBJET JSON\n"
+        );
+    }
+
+    else if (*debut == '[')
+    {
+        printf(
+            "[FRONT -> BACK] Type : TABLEAU JSON\n"
+        );
+    }
+
+    else
+    {
+        printf(
+            "[FRONT -> BACK] Type : FORMAT INCONNU\n"
+        );
+    }
+
+
+    // ========================================================
+    // RECHERCHE DE QUELQUES TYPES DE MESSAGE
+    //
+    // Pour l'instant ce n'est PAS un vrai parseur JSON.
+    // Cela permet simplement de voir ce qui arrive.
+    // ========================================================
+
+    if (
+        strstr(
+            body,
+            "ConfigurationDef"
+        ) != NULL
+    )
+    {
+        printf(
+            "[FRONT -> BACK] ConfigurationDef détectée\n"
+        );
+    }
+
+
+    if (
+        strstr(
+            body,
+            "ConfigurationMission"
+        ) != NULL
+    )
+    {
+        printf(
+            "[FRONT -> BACK] ConfigurationMission détectée\n"
+        );
+    }
+
+
+    if (
+        strstr(
+            body,
+            "validation"
+        ) != NULL ||
+        strstr(
+            body,
+            "Validation"
+        ) != NULL
+    )
+    {
+        printf(
+            "[FRONT -> BACK] Validation détectée\n"
+        );
+    }
+
+
+    printf("\n");
+
+
+    // ========================================================
+    // REPONSE AU JAVASCRIPT
+    // ========================================================
+
+    const char *reponse =
+        "{"
+            "\"success\":true,"
+            "\"message\":\"JSON recu par le serveur C\""
+        "}";
+
+
+    envoyer_json(
+        client_fd,
+        reponse
+    );
+}
+
+
+// ============================================================
+// ============================================================
+// BACK -> FRONT
+//
+// JSON BATTERIES
+// ============================================================
+// ============================================================
+
+void envoyer_batteries(
+    int client_fd
+)
+{
+    // --------------------------------------------------------
+    // Valeurs simulées
+    // --------------------------------------------------------
+
+    static float tension = 24.50f;
+
+    static float courant = 10.0f;
+
+
+    tension += 0.01f;
+
+    if (tension > 24.90f)
+    {
+        tension = 24.50f;
+    }
+
+
+    courant += 0.20f;
+
+    if (courant > 15.0f)
+    {
+        courant = 10.0f;
+    }
+
+
+    // --------------------------------------------------------
+    // JSON
+    // --------------------------------------------------------
+
+    char json[32768];
+
+
+    snprintf(
+        json,
+        sizeof(json),
+
+        "{"
+
+        "\"type\":\"state\","
+
+        "\"batterie\":{"
+
+            "\"status\":{"
+
+                "\"etatcommCyclable\":2,"
+                "\"etatcommIVT\":2,"
+                "\"etatcommLTC\":2,"
+
+                "\"etatcommDisque1\":2,"
+                "\"etatcommDisque2\":2,"
+                "\"etatcommDisque3\":2,"
+                "\"etatcommDisque4\":2,"
+                "\"etatcommDisque5\":2"
+
+            "},"
+
+            "\"etat\":{"
+
+                "\"courant\":%.2f,"
+                "\"tension\":%.2f,"
+                "\"tensioncharge\":25.20"
+
+            "},"
+
+            "\"infoelt\":{"
+
+                "\"elt1tensionmin\":3.68,"
+                "\"elt1tensionmax\":3.74,"
+                "\"elt1tempmin\":22,"
+                "\"elt1tempmax\":27,"
+                "\"elt1bmsstate\":1,"
+
+                "\"elt2tensionmin\":3.69,"
+                "\"elt2tensionmax\":3.75,"
+                "\"elt2tempmin\":21,"
+                "\"elt2tempmax\":26,"
+                "\"elt2bmsstate\":1,"
+
+                "\"elt3tensionmin\":3.67,"
+                "\"elt3tensionmax\":3.73,"
+                "\"elt3tempmin\":22,"
+                "\"elt3tempmax\":28,"
+                "\"elt3bmsstate\":1,"
+
+                "\"elt4tensionmin\":3.70,"
+                "\"elt4tensionmax\":3.76,"
+                "\"elt4tempmin\":23,"
+                "\"elt4tempmax\":27,"
+                "\"elt4bmsstate\":1,"
+
+                "\"elt5tensionmin\":3.68,"
+                "\"elt5tensionmax\":3.74,"
+                "\"elt5tempmin\":22,"
+                "\"elt5tempmax\":26,"
+                "\"elt5bmsstate\":1"
+
+            "},"
+
+            "\"tempelt\":{"
+
+                "\"elt1tempdisque1\":23,"
+                "\"elt1tempdisque2\":24,"
+
+                "\"elt2tempdisque1\":24,"
+                "\"elt2tempdisque2\":25,"
+
+                "\"elt3tempdisque1\":23,"
+                "\"elt3tempdisque2\":24,"
+
+                "\"elt4tempdisque1\":25,"
+                "\"elt4tempdisque2\":24,"
+
+                "\"elt5tempdisque1\":24,"
+                "\"elt5tempdisque2\":23"
+
+            "},"
+
+            "\"tensionelt\":{"
+
+                "\"Disque1.1\":{"
+                    "\"elt1tension\":3.71,"
+                    "\"elt2tension\":3.72,"
+                    "\"elt3tension\":3.70,"
+                    "\"elt4tension\":3.73,"
+                    "\"elt5tension\":3.72,"
+                    "\"elt6tension\":3.71,"
+                    "\"elt7tension\":3.74,"
+                    "\"elt8tension\":3.72,"
+                    "\"elt9tension\":3.73,"
+                    "\"elt10tension\":3.71,"
+                    "\"elt11tension\":3.72,"
+                    "\"elt12tension\":3.70,"
+                    "\"elt13tension\":3.73,"
+                    "\"elt14tension\":3.72"
+                "},"
+
+                "\"Disque1.2\":{"
+                    "\"elt15tension\":3.71,"
+                    "\"elt16tension\":3.72,"
+                    "\"elt17tension\":3.73,"
+                    "\"elt18tension\":3.70,"
+                    "\"elt19tension\":3.72,"
+                    "\"elt20tension\":3.74,"
+                    "\"elt21tension\":3.71,"
+                    "\"elt22tension\":3.73,"
+                    "\"elt23tension\":3.72,"
+                    "\"elt24tension\":3.70,"
+                    "\"elt25tension\":3.71,"
+                    "\"elt26tension\":3.73,"
+                    "\"elt27tension\":3.72"
+                "},"
+
+                "\"Disque2.1\":{"
+                    "\"elt1tension\":3.70,"
+                    "\"elt2tension\":3.71,"
+                    "\"elt3tension\":3.72,"
+                    "\"elt4tension\":3.73,"
+                    "\"elt5tension\":3.71,"
+                    "\"elt6tension\":3.72,"
+                    "\"elt7tension\":3.70,"
+                    "\"elt8tension\":3.74,"
+                    "\"elt9tension\":3.72,"
+                    "\"elt10tension\":3.71,"
+                    "\"elt11tension\":3.73,"
+                    "\"elt12tension\":3.72,"
+                    "\"elt13tension\":3.70,"
+                    "\"elt14tension\":3.71"
+                "},"
+
+                "\"Disque2.2\":{"
+                    "\"elt15tension\":3.72,"
+                    "\"elt16tension\":3.73,"
+                    "\"elt17tension\":3.71,"
+                    "\"elt18tension\":3.72,"
+                    "\"elt19tension\":3.70,"
+                    "\"elt20tension\":3.74,"
+                    "\"elt21tension\":3.73,"
+                    "\"elt22tension\":3.72,"
+                    "\"elt23tension\":3.71,"
+                    "\"elt24tension\":3.73,"
+                    "\"elt25tension\":3.72,"
+                    "\"elt26tension\":3.70,"
+                    "\"elt27tension\":3.71"
+                "},"
+
+                "\"Disque3.1\":{"
+                    "\"elt1tension\":3.72,"
+                    "\"elt2tension\":3.71,"
+                    "\"elt3tension\":3.73,"
+                    "\"elt4  "\"Disque3.1\":{"
+
+                    "\"elt1tension\":3.72,"
+
+                    "\"elt2tension\":3.71,"
+
+                    "\"elt3tension\":3.73,"
+
+                    "\"elt4tension\":3.70,"
+
+                    "\"elt5tension\":3.72,"
+
+                    "\"elt6tension\":3.74,"
+
+                    "\"elt7tension\":3.71,"
+
+                    "\"elt8tension\":3.72,"
+
+                    "\"elt9tension\":3.73,"
+
+                    "\"elt10tension\":3.70,"
+
+                    "\"elt11tension\":3.71,"
+
+                    "\"elt12tension\":3.72,"
+
+                    "\"elt13tension\":3.74,"
+
+                    "\"elt14tension\":3.73"
+
+                "},"
+
+                "\"Disque3.2\":{"
+
+                    "\"elt15tension\":3.71,"
+
+                    "\"elt16tension\":3.72,"
+
+                    "\"elt17tension\":3.73,"
+
+                    "\"elt18tension\":3.72,"
+
+                    "\"elt19tension\":3.70,"
+
+                    "\"elt20tension\":3.71,"
+
+                    "\"elt21tension\":3.74,"
+
+                    "\"elt22tension\":3.72,"
+
+                    "\"elt23tension\":3.73,"
+
+                    "\"elt24tension\":3.71,"
+
+                    "\"elt25tension\":3.72,"
+
+                    "\"elt26tension\":3.70,"
+
+                    "\"elt27tension\":3.73"
+
+                "},"
+
+                "\"Disque4.1\":{"
+
+                    "\"elt1tension\":3.73,"
+
+                    "\"elt2tension\":3.72,"
+
+                    "\"elt3tension\":3.71,"
+
+                    "\"elt4tension\":3.74,"
+
+                    "\"elt5tension\":3.72,"
+
+                    "\"elt6tension\":3.70,"
+
+                    "\"elt7tension\":3.73,"
+
+                    "\"elt8tension\":3.71,"
+
+                    "\"elt9tension\":3.72,"
+
+                    "\"elt10tension\":3.74,"
+
+                    "\"elt11tension\":3.73,"
+
+                    "\"elt12tension\":3.71,"
+
+                    "\"elt13tension\":3.72,"
+
+                    "\"elt14tension\":3.70"
+
+                "},"
+
+                "\"Disque4.2\":{"
+
+                    "\"elt15tension\":3.72,"
+
+                    "\"elt16tension\":3.73,"
+
+                    "\"elt17tension\":3.71,"
+
+                    "\"elt18tension\":3.74,"
+
+                    "\"elt19tension\":3.72,"
+
+                    "\"elt20tension\":3.70,"
+
+                    "\"elt21tension\":3.73,"
+
+                    "\"elt22tension\":3.72,"
+
+                    "\"elt23tension\":3.71,"
+
+                    "\"elt24tension\":3.74,"
+
+                    "\"elt25tension\":3.72,"
+
+                    "\"elt26tension\":3.73,"
+
+                    "\"elt27tension\":3.71"
+
+                "},"
+
+                "\"Disque5.1\":{"
+
+                    "\"elt1tension\":3.72,"
+
+                    "\"elt2tension\":3.74,"
+
+                    "\"elt3tension\":3.73,"
+
+                    "\"elt4tension\":3.71,"
+
+                    "\"elt5tension\":3.72,"
+
+                    "\"elt6tension\":3.70,"
+
+                    "\"elt7tension\":3.73,"
+
+                    "\"elt8tension\":3.72,"
+
+                    "\"elt9tension\":3.74,"
+
+                    "\"elt10tension\":3.71,"
+
+                    "\"elt11tension\":3.73,"
+
+                    "\"elt12tension\":3.72,"
+
+                    "\"elt13tension\":3.70,"
+
+                    "\"elt14tension\":3.71"
+
+                "},"
+
+                "\"Disque5.2\":{"
+
+                    "\"elt15tension\":3.72,"
+
+                    "\"elt16tension\":3.73,"
+
+                    "\"elt17tension\":3.71,"
+
+                    "\"elt18tension\":3.74,"
+
+                    "\"elt19tension\":3.72,"
+
+                    "\"elt20tension\":3.70,"
+
+                    "\"elt21tension\":3.73,"
+
+                    "\"elt22tension\":3.72,"
+
+                    "\"elt23tension\":3.71,"
+
+                    "\"elt24tension\":3.74,"
+
+                    "\"elt25tension\":3.72,"
+
+                    "\"elt26tension\":3.73,"
+
+                    "\"elt27tension\":3.71"
+
+                "},"
+
+                "\"MoyenDisque1\":{"
+
+                    "\"tensionMin\":3.70,"
+
+                    "\"tensionMax\":3.74,"
+
+                    "\"tensionMoyen\":3.72,"
+
+                    "\"Delta\":0.04"
+
+                "},"
+
+                "\"MoyenDisque2\":{"
+
+                    "\"tensionMin\":3.70,"
+
+                    "\"tensionMax\":3.74,"
+
+                    "\"tensionMoyen\":3.72,"
+
+                    "\"Delta\":0.04"
+
+                "},"
+
+                "\"MoyenDisque3\":{"
+
+                    "\"tensionMin\":3.70,"
+
+                    "\"tensionMax\":3.74,"
+
+                    "\"tensionMoyen\":3.72,"
+
+                    "\"Delta\":0.04"
+
+                "},"
+
+                "\"MoyenDisque4\":{"
+
+                    "\"tensionMin\":3.70,"
+
+                    "\"tensionMax\":3.74,"
+
+                    "\"tensionMoyen\":3.72,"
+
+                    "\"Delta\":0.04"
+
+                "},"
+
+                "\"MoyenDisque5\":{"
+
+                    "\"tensionMin\":3.70,"
+
+                    "\"tensionMax\":3.74,"
+
+                    "\"tensionMoyen\":3.72,"
+
+                    "\"Delta\":0.04"
+
+                "}"
+
+            "}"
+
+        "}"
+
+        "}",
+
+        courant,
+
+        tension
+
+    );
+
+    envoyer_json(
+
+        client_fd,
+
+        json
+
+    );
+
+}
+
+// ============================================================
+
+// ============================================================
+
+// BACK -> FRONT
+
+//
+
+// JSON STA
+
+// ============================================================
+
+// ============================================================
+
+void envoyer_sta(
+
+    int client_fd
+
+)
+
+{
+
+    static int sequence = 0;
+
+    sequence++;
+
+    char json[2048];
+
+    snprintf(
+
+        json,
+
+        sizeof(json),
+
+        "{"
+
+            "\"ReponseSta\":{"
+
+                "\"dCmdNum_Mess\":1,"
+
+                "\"dCmdIdent\":\"1\","
+
+                "\"dCmdNum_Seq\":%d,"
+
+                "\"dAckNum_Mess\":1,"
+
+                "\"dAckRes_Det_test\":0,"
+
+                "\"dAckNum_Seq\":%d,"
+
+                "\"dAckNum_SeqEncours\":%d,"
+
+                "\"dAckMem_SSD\":0,"
+
+                "\"dAckErreur\":0,"
+
+                "\"dIdManoeuvre\":1"
+
+            "}"
+
+        "}",
+
+        sequence,
+
+        sequence,
+
+        sequence
+
+    );
+
+    envoyer_json(
+
+        client_fd,
+
+        json
+
+    );
+
+}
+
+// ============================================================
+
+// ============================================================
+
+// BACK -> FRONT
+
+//
+
+// JSON ETAT DEVICE
+
+// ============================================================
+
+// ============================================================
+
+void envoyer_etat_device(
+
+    int client_fd
+
+)
+
+{
+
+    static int rpm = 1200;
+
+    rpm += 25;
+
+    if (rpm > 1500)
+
+    {
+
+        rpm = 1200;
+
+    }
+
+    char json[8192];
+
+    snprintf(
+
+        json,
+
+        sizeof(json),
+
+        "{"
+
+            "\"type\":\"state\","
+
+            "\"apercu\":{"
+
+                "\"Etape\":\"8\","
+
+                "\"EtatCom\":\"1\","
+
+                "\"etatShd\":0,"
+
+                "\"Etat240\":1,"
+
+                "\"Etat480\":1,"
+
+                "\"EtatMagic\":1,"
+
+                "\"Etattorpout\":0,"
+
+                "\"EtatContact\":1"
+
+            "},"
+
+            "\"motor\":{"
+
+                "\"state\":\"3\","
+
+                "\"rpm_actual\":%d,"
+
+                "\"rpm_cmd\":1500,"
+
+                "\"temperature\":42,"
+
+                "\"statusword\":0"
+
+            "},"
+
+            "\"STA\":{"
+
+                "\"state\":\"3\","
+
+                "\"Tensionnominale_240\":240,"
+
+                "\"CourantMoyen_240\":15,"
+
+                "\"CourantInstantanne_240\":17,"
+
+                "\"Tensionnominale_24\":24,"
+
+                "\"CourantMoyen_24\":4,"
+
+                "\"CourantInstantanne_24\":5"
+
+            "},"
+
+            "\"Imu\":{"
+
+                "\"state_Vitesse\":\"0\","
+
+                "\"state_Acc\":\"3\","
+
+                "\"vitesse_lineaire\":2.5,"
+
+                "\"latitude\":43.25,"
+
+                "\"longitude\":6.58,"
+
+                "\"immersion\":0.75,"
+
+                "\"bande\":0,"
+
+                "\"assiette\":1.5,"
+
+                "\"cap\":1610612736"
+
+            "},"
+
+            "\"sensors\":{"
+
+                "\"water\":0,"
+
+                "\"pressure\":1.25,"
+
+                "\"temp_smo1\":22.5,"
+
+                "\"temp_smo2\":23.1,"
+
+                "\"temp_smo3\":22.8,"
+
+                "\"temp_plaque\":26.4,"
+
+                "\"immersion\":0.75"
+
+            "},"
+
+            "\"gouverne\":{"
+
+                "\"sup\":{"
+
+                    "\"position_Cmd\":0.112374,"
+
+                    "\"position_mes\":0.10,"
+
+                    "\"vitesse\":0.02,"
+
+                    "\"couple\":0,"
+
+                    "\"statut_word\":0"
+
+                "},"
+
+                "\"tri\":{"
+
+                    "\"position_Cmd\":0,"
+
+                    "\"position_mes\":0,"
+
+                    "\"vitesse\":0,"
+
+                    "\"couple\":0,"
+
+                    "\"statut_word\":0"
+
+                "},"
+
+                "\"inf\":{"
+
+                    "\"position_Cmd\":0,"
+
+                    "\"position_mes\":0,"
+
+                    "\"vitesse\":0,"
+
+                    "\"couple\":0,"
+
+                    "\"statut_word\":0"
+
+                "},"
+
+                "\"bab\":{"
+
+                    "\"position_Cmd\":0,"
+
+                    "\"position_mes\":0,"
+
+                    "\"vitesse\":0,"
+
+                    "\"couple\":0,"
+
+                    "\"statut_word\":4101800962"
+
+                "}"
+
+            "}"
+
+        "}",
+
+        rpm
+
+    );
+
+    envoyer_json(
+
+        client_fd,
+
+        json
+
+    );
+
+}
+
+// ============================================================
+
+// ============================================================
+
+// BACK -> FRONT
+
+//
+
+// JSON CONFIGURATION DEF
+
+// ============================================================
+
+// ============================================================
+
+void envoyer_config_def(
+
+    int client_fd
+
+)
+
+{
+
+    const char *json =
+
+        "{"
+
+            "\"ConfigurationDef\":{"
+
+                "\"uiTypeTir\":3,"
+
+                "\"cFileMission\":\"missionSta1.ppg\","
+
+                "\"uiTps_SortieTube\":3,"
+
+                "\"uiTps_Rall_Imm\":5,"
+
+                "\"uiTps_Rall_Cap\":5,"
+
+                "\"fPlancher\":35,"
+
+                "\"fPlafond\":5,"
+
+                "\"uiTps_Mur\":0,"
+
+                "\"uiDist_Mur\":70,"
+
+                "\"uiTps_Shd_Carte\":3.00,"
+
+                "\"uiTpsTir\":350000.00,"
+
+                "\"TypeEnreg\":1,"
+
+                "\"TypeExec\":1"
+
+            "}"
+
+        "}";
+
+    envoyer_json(
+
+        client_fd,
+
+        json
+
+    );
+
+}
+
+// ============================================================
+
+// ============================================================
+
+// MAIN
+
+// ============================================================
+
+// ============================================================
+
+int main(void)
+
+{
+
+    // ========================================================
+
+    // CREATION SOCKET HTTP
+
+    // ========================================================
+
+    int server_fd = socket(
+
+        AF_INET,
+
+        SOCK_STREAM,
+
+        0
+
+    );
+
+    if (server_fd < 0)
+
+    {
+
+        perror("socket");
+
+        return 1;
+
+    }
+
+    // ========================================================
+
+    // REUTILISATION DU PORT
+
+    // ========================================================
+
+    int opt = 1;
+
+    if (
+
+        setsockopt(
+
+            server_fd,
+
+            SOL_SOCKET,
+
+            SO_REUSEADDR,
+
+            &opt,
+
+            sizeof(opt)
+
+        ) < 0
+
+    )
+
+    {
+
+        perror("setsockopt");
+
+    }
+
+    // ========================================================
+
+    // ADRESSE SERVEUR
+
+    // ========================================================
+
+    struct sockaddr_in adresse;
+
+    memset(
+
+        &adresse,
+
+        0,
+
+        sizeof(adresse)
+
+    );
+
+    adresse.sin_family = AF_INET;
+
+    adresse.sin_addr.s_addr =
+
+        INADDR_ANY;
+
+    adresse.sin_port =
+
+        htons(PORT);
+
+    // ========================================================
+
+    // BIND
+
+    // ========================================================
+
+    if (
+
+        bind(
+
+            server_fd,
+
+            (struct sockaddr *)&adresse,
+
+            sizeof(adresse)
+
+        ) < 0
+
+    )
+
+    {
+
+        perror("bind");
+
+        close(server_fd);
+
+        return 1;
+
+    }
+
+    // ========================================================
+
+    // LISTEN
+
+    // ========================================================
+
+    if (
+
+        listen(
+
+            server_fd,
+
+            10
+
+        ) < 0
+
+    )
+
+    {
+
+        perror("listen");
+
+        close(server_fd);
+
+        return 1;
+
+    }
+
+    // ========================================================
+
+    // INFORMATION
+
+    // ========================================================
+
+    printf("\n");
+
+    printf(
+
+        "====================================================\n"
+
+    );
+
+    printf(
+
+        " SERVEUR C ACTIF\n"
+
+    );
+
+    printf(
+
+        " Port : %d\n",
+
+        PORT
+
+    );
+
+    printf(
+
+        "====================================================\n"
+
+    );
+
+    printf(
+
+        " GET  /batteries\n"
+
+    );
+
+    printf(
+
+        " GET  /sta\n"
+
+    );
+
+    printf(
+
+        " GET  /etatdevice\n"
+
+    );
+
+    printf(
+
+        " GET  /configdef\n"
+
+    );
+
+    printf(
+
+        " POST /message   <- FRONT VERS BACK\n"
+
+    );
+
+    printf(
+
+        "====================================================\n\n"
+
+    );
+
+    // ========================================================
+
+    // BOUCLE PRINCIPALE
+
+    // ========================================================
+
+    while (1)
+
+    {
+
+        // ====================================================
+
+        // ATTENTE CLIENT
+
+        // ====================================================
+
+        int client_fd = accept(
+
+            server_fd,
+
+            NULL,
+
+            NULL
+
+        );
+
+        if (client_fd < 0)
+
+        {
+
+            perror("accept");
+
+            continue;
+
+        }
+
+        // ====================================================
+
+        // BUFFER REQUETE
+
+        // ====================================================
+
+        char request[
+
+            REQUEST_BUFFER_SIZE
+
+        ];
+
+        memset(
+
+            request,
+
+            0,
+
+            sizeof(request)
+
+        );
+
+        // ====================================================
+
+        // RECEPTION COMPLETE
+
+        // ====================================================
+
+        ssize_t recu =
+
+            recevoir_requete_http(
+
+                client_fd,
+
+                request,
+
+                sizeof(request)
+
+            );
+
+        if (recu <= 0)
+
+        {
+
+            close(
+
+                client_fd
+
+            );
+
+            continue;
+
+        }
+
+        // ====================================================
+
+        // EXTRACTION METHODE + ROUTE
+
+        // ====================================================
+
+        char methode[16] = {0};
+
+        char route[256] = {0};
+
+        if (
+
+            sscanf(
+
+                request,
+
+                "%15s %255s",
+
+                methode,
+
+                route
+
+            ) != 2
+
+        )
+
+        {
+
+            envoyer_erreur_json(
+
+                client_fd,
+
+                "400 Bad Request",
+
+                "Requete HTTP invalide"
+
+            );
+
+            close(
+
+                client_fd
+
+            );
+
+            continue;
+
+        }
+
+        printf(
+
+            "HTTP : %s %s\n",
+
+            methode,
+
+            route
+
+        );
+
+        // ====================================================
+
+        // OPTIONS
+
+        // ====================================================
+
+        if (
+
+            strcmp(
+
+                methode,
+
+                "OPTIONS"
+
+            ) == 0
+
+        )
+
+        {
+
+            envoyer_headers(
+
+                client_fd,
+
+                "204 No Content",
+
+                "text/plain",
+
+                0
+
+            );
+
+        }
+
+        // ====================================================
+
+        // FRONT -> BACK
+
+        //
+
+        // POST /message
+
+        // ====================================================
+
+        else if (
+
+            strcmp(
+
+                methode,
+
+                "POST"
+
+            ) == 0
+
+            &&
+
+            strcmp(
+
+                route,
+
+                "/message"
+
+            ) == 0
+
+        )
+
+        {
+
+            recevoir_message_front(
+
+                client_fd,
+
+                request
+
+            );
+
+        }
+
+        // ====================================================
+
+        // BACK -> FRONT
+
+        //
+
+        // BATTERIES
+
+        // ====================================================
+
+        else if (
+
+            strcmp(
+
+                methode,
+
+                "GET"
+
+            ) == 0
+
+            &&
+
+            strcmp(
+
+                route,
+
+                "/batteries"
+
+            ) == 0
+
+        )
+
+        {
+
+            envoyer_batteries(
+
+                client_fd
+
+            );
+
+        }
+
+        // ====================================================
+
+        // BACK -> FRONT
+
+        //
+
+        // STA
+
+        // ====================================================
+
+        else if (
+
+            strcmp(
+
+                methode,
+
+                "GET"
+
+            ) == 0
+
+            &&
+
+            strcmp(
+
+                route,
+
+                "/sta"
+
+            ) == 0
+
+        )
+
+        {
+
+            envoyer_sta(
+
+                client_fd
+
+            );
+
+        }
+
+        // ====================================================
+
+        // BACK -> FRONT
+
+        //
+
+        // ETAT DEVICE
+
+        // ====================================================
+
+        else if (
+
+            strcmp(
+
+                methode,
+
+                "GET"
+
+            ) == 0
+
+            &&
+
+            strcmp(
+
+                route,
+
+                "/etatdevice"
+
+            ) == 0
+
+        )
+
+        {
+
+            envoyer_etat_device(
+
+                client_fd
+
+            );
+
+        }
+
+        // ====================================================
+
+        // BACK -> FRONT
+
+        //
+
+        // CONFIGURATION DEF
+
+        // ====================================================
+
+        else if (
+
+            strcmp(
+
+                methode,
+
+                "GET"
+
+            ) == 0
+
+            &&
+
+            strcmp(
+
+                route,
+
+                "/configdef"
+
+            ) == 0
+
+        )
+
+        {
+
+            envoyer_config_def(
+
+                client_fd
+
+            );
+
+        }
+
+        // ====================================================
+
+        // INDEX.HTML
+
+        // ====================================================
+
+        else if (
+
+            strcmp(
+
+                methode,
+
+                "GET"
+
+            ) == 0
+
+            &&
+
+            (
+
+                strcmp(
+
+                    route,
+
+                    "/"
+
+                ) == 0
+
+                ||
+
+                strcmp(
+
+                    route,
+
+                    "/index.html"
+
+                ) == 0
+
+            )
+
+        )
+
+        {
+
+            envoyer_fichier(
+
+                client_fd,
+
+                BASE_PATH "/index.html",
+
+                "text/html; charset=utf-8"
+
+            );
+
+        }
+
+        // ====================================================
+
+        // SCRIPT.JS
+
+        // ====================================================
+
+        else if (
+
+            strcmp(
+
+                methode,
+
+                "GET"
+
+            ) == 0
+
+            &&
+
+            strcmp(
+
+                route,
+
+                "/script.js"
+
+            ) == 0
+
+        )
+
+        {
+
+            envoyer_fichier(
+
+                client_fd,
+
+                BASE_PATH "/script.js",
+
+                "application/javascript; charset=utf-8"
+
+            );
+
+        }
+
+        // ====================================================
+
+        // STYLE.CSS
+
+        // ====================================================
+
+        else if (
+
+            strcmp(
+
+                methode,
+
+                "GET"
+
+            ) == 0
+
+            &&
+
+            strcmp(
+
+                route,
+
+                "/style.css"
+
+            ) == 0
+
+        )
+
+        {
+
+            envoyer_fichier(
+
+                client_fd,
+
+                BASE_PATH "/style.css",
+
+                "text/css; charset=utf-8"
+
+            );
+
+        }
+
+        // ====================================================
+
+        // STYLE2.CSS
+
+        // ====================================================
+
+        else if (
+
+            strcmp(
+
+                methode,
+
+                "GET"
+
+            ) == 0
+
+            &&
+
+            strcmp(
+
+                route,
+
+                "/style2.css"
+
+            ) == 0
+
+        )
+
+        {
+
+            envoyer_fichier(
+
+                client_fd,
+
+                BASE_PATH "/style2.css",
+
+                "text/css; charset=utf-8"
+
+            );
+
+        }
+
+        // ====================================================
+
+        // FAVICON
+
+        // ====================================================
+
+        else if (
+
+            strcmp(
+
+                route,
+
+                "/favicon.ico"
+
+            ) == 0
+
+        )
+
+        {
+
+            envoyer_headers(
+
+                client_fd,
+
+                "204 No Content",
+
+                "image/x-icon",
+
+                0
+
+            );
+
+        }
+
+        // ====================================================
+
+        // ROUTE INCONNUE
+
+        // ====================================================
+
+        else
+
+        {
+
+            printf(
+
+                "[404] Route inconnue : %s\n",
+
+                route
+
+            );
+
+            envoyer_erreur_json(
+
+                client_fd,
+
+                "404 Not Found",
+
+                "Route introuvable"
+
+            );
+
+        }
+
+        // ====================================================
+
+        // FIN CLIENT
+
+        // ====================================================
+
+        close(
+
+            client_fd
+
+        );
+
+    }
+
+    // Normalement jamais atteint
+
+    close(
+
+        server_fd
+
+    );
+
+    return 0;
+
+}
